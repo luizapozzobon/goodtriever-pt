@@ -8,3 +8,6 @@ matplotlib
 seaborn
 tensorboard
 transformers[torch]
+fsspec
+gcsfs
+psutil
