@@ -70,7 +70,9 @@ class PerspectiveAPI:
         self.last_request_time = time.time()
 
         # Keys guaranteed in insertion order (Python 3.7+)
-        responses = {str(uid): None for uid in range(self.next_uid, self.next_uid + len(texts))}
+        responses = {
+            str(uid): None for uid in range(self.next_uid, self.next_uid + len(texts))
+        }
         self.next_uid += len(texts)
 
         def response_callback(request_id, response, exception):
@@ -97,10 +99,13 @@ class PerspectiveAPI:
     ):
         # Check for output file
         output_file = Path(output_file)
+        assert not output_file.exists()
 
         # Set up progress bar
         if not pbar:
-            total = len(corpus) if isinstance(corpus, collections.abc.Sequence) else None
+            total = (
+                len(corpus) if isinstance(corpus, collections.abc.Sequence) else None
+            )
             pbar = tqdm(total=total, dynamic_ncols=True)
         pbar.set_description(f"Perspective API")
 
