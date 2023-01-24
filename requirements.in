@@ -1,7 +1,10 @@
+# to generate requirements.txt: pip-compile requirements.in --resolver=backtracking
+# python3 -m pip install ipykernel -U --user --force-reinstall
+
+black
+flake8
 pandas
 matplotlib
 seaborn
 tensorboard
 transformers[torch]
-
-# python3 -m pip install ipykernel -U --user --force-reinstall
