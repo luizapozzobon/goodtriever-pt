@@ -14,7 +14,7 @@ ALLOWED_MODELS = ["gpt2"]
 def main(
     filename: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
     model_name: str = "gpt2",
-    num_return_sequences: int = 2,
+    num_return_sequences: int = 25,
     max_new_tokens: int = 20,
     batch_size: int = 32,
     out_folder: str = "./outputs/",
@@ -22,8 +22,8 @@ def main(
 ) -> None:
     if model_name not in ALLOWED_MODELS:
         raise NotImplementedError(
-            f"{model_name} is not implemented. "
-            f"Choose one from {', '.join(ALLOWED_MODELS)}")
+            f"{model_name} is not implemented. " f"Choose one from {', '.join(ALLOWED_MODELS)}"
+        )
 
     df = pd.read_json(filename, lines=True)
 
