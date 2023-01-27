@@ -18,6 +18,7 @@ def main(
     max_new_tokens: int = 20,
     batch_size: int = 32,
     out_folder: str = "./outputs/",
+    use_eos: bool = False,
 ) -> None:
     if model_name not in ALLOWED_MODELS:
         raise NotImplementedError(
@@ -32,7 +33,8 @@ def main(
         batch_size=batch_size,
         num_return_sequences=num_return_sequences,
         max_new_tokens=max_new_tokens,
-        out_folder=out_folder
+        out_folder=out_folder,
+        use_eos=use_eos,
     )
 
 

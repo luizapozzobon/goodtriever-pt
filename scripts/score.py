@@ -3,18 +3,19 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
+from pathlib import Path
+
 import fire
+import numpy as np
 import pandas as pd
 
-import numpy as np
-from pathlib import Path
 from utils.perspective_api import PerspectiveWorker
 from utils.utils import load_cache
 
 
 def main(
-    filename: str = "outputs/gpt2_continuations.jsonl",
-    column_name: str = "continuations",
+    filename: str = "outputs/gpt2_generations.jsonl",
+    column_name: str = "generations",
     out_folder: str = "./outputs/",
     perspective_rate_limit: str = 25
 ) -> None:

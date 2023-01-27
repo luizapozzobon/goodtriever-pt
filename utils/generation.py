@@ -1,11 +1,11 @@
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
-
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
-from typing import List, Generator
 import json
 from pathlib import Path
+from typing import Generator, List
+
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 
 def load_cache(file: Path):
@@ -50,11 +50,15 @@ def batched_generation(
     batch_size: int,
     num_return_sequences: int,
     max_new_tokens: int,
-    out_folder: str
+    out_folder: str,
+    use_eos: bool = False
 ) -> Generator:
     """https://github.com/allenai/real-toxicity-prompts/blob/master/generation/generation.py#L61"""
 
-    out_file = Path(out_folder) / f"{model_name}_continuations.jsonl"
+    if use_eos:
+        raise NotImplementedError("Not implemented.")
+
+    out_file = Path(out_folder) / f"{model_name}_generations.jsonl"
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Load cached generations
@@ -86,7 +90,7 @@ def batched_generation(
             max_new_tokens=max_new_tokens,
         )
         data = [
-            {"prompt": p, "continuations": c}
+            {"prompt": p, "generations": c}
             for p, c in zip(prompts, continuations)
         ]
         for d in data:
