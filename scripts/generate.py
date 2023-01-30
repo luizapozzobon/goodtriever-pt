@@ -4,6 +4,7 @@ Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
 import fire
+import numpy as np
 import pandas as pd
 
 from utils.generation import batched_generation
@@ -25,7 +26,13 @@ def main(
             f"{model_name} is not implemented. " f"Choose one from {', '.join(ALLOWED_MODELS)}"
         )
 
-    df = pd.read_json(filename, lines=True)
+    if use_eos:
+        if model_name in ['gpt2']:
+            # 10k unprompted samples
+            df = np.repeat(pd.Series('<|endoftext|>'), 10_000)
+        num_return_sequences = 1
+    else:
+        df = pd.read_json(filename, lines=True)
 
     yield from batched_generation(
         df,

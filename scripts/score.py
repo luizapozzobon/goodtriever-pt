@@ -14,7 +14,7 @@ from utils.utils import load_cache
 
 
 def main(
-    filename: str = "outputs/gpt2_generations.jsonl",
+    filename: str = "outputs/prompted_gpt2_generations.jsonl",
     column_name: str = "generations",
     out_folder: str = "./outputs/",
     perspective_rate_limit: str = 50

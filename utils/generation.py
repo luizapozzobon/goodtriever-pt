@@ -4,9 +4,10 @@ from typing import Generator, List
 
 import numpy as np
 import pandas as pd
+import torch
 from tqdm import tqdm
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
-import torch
+
 
 def load_cache(file: Path):
     if file.exists():
@@ -45,7 +46,7 @@ def generate(text: List[str], model, tokenizer, max_new_tokens: int, num_return_
 
 
 def batched_generation(
-    df: pd.DataFrame,
+    prompts: pd.DataFrame,
     model_name: str,
     batch_size: int,
     num_return_sequences: int,
@@ -55,10 +56,7 @@ def batched_generation(
 ) -> Generator:
     """https://github.com/allenai/real-toxicity-prompts/blob/master/generation/generation.py#L61"""
 
-    if use_eos:
-        raise NotImplementedError("Not implemented.")
-
-    out_file = Path(out_folder) / f"{model_name}_generations.jsonl"
+    out_file = Path(out_folder) / f'{"eos" if use_eos else "prompted"}_{model_name}_generations.jsonl'
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Load cached generations
@@ -68,8 +66,8 @@ def batched_generation(
         num_cached_generations += 1
 
     # Remove prompts that have already been generated with
-    df = df.iloc[num_cached_generations:]
-    if df.empty:
+    prompts = prompts.iloc[num_cached_generations:]
+    if prompts.empty:
         return
 
     # Setup model
@@ -81,12 +79,16 @@ def batched_generation(
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
 
-    chunks = df.shape[0] // batch_size
+    chunks = len(prompts) // batch_size
     print(f"Iterating on {chunks} chunks...")
-    for chunk in tqdm(np.array_split(df, chunks), total=chunks):
-        prompts = pd.json_normalize(chunk['prompt'])['text'].values.tolist()
+    for chunk in tqdm(np.array_split(prompts, chunks), total=chunks):
+        if not use_eos:
+            chunk = pd.json_normalize(chunk['prompt'])['text']
+
+        chunk = chunk.values.tolist()
+
         continuations = generate(
-            prompts,
+            chunk,
             model,
             tokenizer,
             num_return_sequences=num_return_sequences,
