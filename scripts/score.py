@@ -3,6 +3,7 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
+import time
 from pathlib import Path
 
 import fire
@@ -24,7 +25,7 @@ def main(
         raise ValueError(f"{filename} not found.")
 
     df = pd.read_json(filename, lines=True)
-    out_file = Path(out_folder) / f'{filename.stem.split("_")[0]}_perspective.jsonl'
+    out_file = Path(out_folder) / f'{filename.stem.replace("generations", "perspective")}.jsonl'
 
     if not isinstance(df.iloc[0][column_name], list):
         raise ValueError(f"`{column_name}` should have lists as value")
@@ -40,7 +41,7 @@ def main(
     # Load cached generations
     num_cached_scores = 0
     for scores in load_cache(out_file):
-        yield scores
+        # yield scores
         num_cached_scores += 1
 
     # Remove prompts that have already been generated with
@@ -48,11 +49,11 @@ def main(
     if df.empty:
         return
 
-    # Flatten and turn to list
+    # Flatten and make list
     values = np.stack(df[column_name].values).reshape(-1).tolist()
 
     for i, text in enumerate(values):
-        perspective(f'generation-{i}', text)
+        perspective(f'generation-{num_cached_scores + i}', text)
 
     perspective.stop()
 

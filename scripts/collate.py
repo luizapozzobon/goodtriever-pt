@@ -47,12 +47,11 @@ def main(
     prompts_path: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
     output_folder: str = "./outputs/",
 ) -> None:
-    prompts = pd.read_json(prompts_path, lines=True)
     generations = pd.read_json(generations_path, lines=True)
     scores = pd.read_json(scores_path, lines=True)
 
     output_file = (
-        Path(output_folder) / f"{Path(generations_path).stem.split('_')[0]}_collated.jsonl"
+        Path(output_folder) / f'{Path(generations_path).stem.replace("generations", "collated")}.jsonl'
     )
     output_file.parent.mkdir(exist_ok=True, parents=True)
 
@@ -67,6 +66,9 @@ def main(
 
     # Collate generations and scores into a list of dicts
     scored_gens = collate(gen_list, scores_list, prompt_indexes)
+
+    if prompts_path:
+        prompts = pd.read_json(prompts_path, lines=True)
 
     prompts = pd.merge(prompts, scored_gens.to_frame(), left_index=True, right_index=True)
     prompts.to_json(output_file, orient="records", lines=True)

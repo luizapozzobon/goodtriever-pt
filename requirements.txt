@@ -108,6 +108,8 @@ isort==5.11.4
     # via -r requirements.in
 jedi==0.18.2
     # via ipython
+joblib==1.2.0
+    # via -r requirements.in
 jupyter-client==8.0.0
     # via ipykernel
 jupyter-core==5.1.5
