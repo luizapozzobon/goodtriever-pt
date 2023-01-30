@@ -8,7 +8,7 @@ import json
 import multiprocessing as mp
 import time
 from pathlib import Path
-from typing import List, Union, Optional, Tuple, Dict, Any, Iterable
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from googleapiclient import discovery
 from googleapiclient.errors import HttpError
@@ -94,7 +94,6 @@ class PerspectiveAPI:
     ):
         # Check for output file
         output_file = Path(output_file)
-        assert not output_file.exists()
 
         # Set up progress bar
         if not pbar:
