@@ -9,4 +9,4 @@ dependencies:
   - ipython
   - pip:
     - pip-tools
-    - r file:requirements.txt
+    - -r requirements.txt
