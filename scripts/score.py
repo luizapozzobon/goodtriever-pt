@@ -17,7 +17,7 @@ def main(
     filename: str = "outputs/gpt2_generations.jsonl",
     column_name: str = "generations",
     out_folder: str = "./outputs/",
-    perspective_rate_limit: str = 25
+    perspective_rate_limit: str = 50
 ) -> None:
     filename = Path(filename)
     if not filename.exists():

@@ -16,7 +16,7 @@ def main(
     model_name: str = "gpt2",
     num_return_sequences: int = 25,
     max_new_tokens: int = 20,
-    batch_size: int = 32,
+    batch_size: int = 16,
     out_folder: str = "./outputs/",
     use_eos: bool = False,
 ) -> None:

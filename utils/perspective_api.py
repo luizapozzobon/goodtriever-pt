@@ -148,6 +148,7 @@ class PerspectiveAPI:
             "comment": {"text": text},
             "requestedAttributes": {attr: {} for attr in PERSPECTIVE_API_ATTRIBUTES},
             "spanAnnotations": True,
+            "doNotStore": True
         }
         return service.comments().analyze(body=analyze_request)
 
