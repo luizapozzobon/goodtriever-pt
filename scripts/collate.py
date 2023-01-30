@@ -4,7 +4,7 @@ Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
 from pathlib import Path
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 import fire
 import numpy as np
@@ -25,7 +25,7 @@ def make_generations_col(generations: List[str], responses: List[Dict]):
 
 
 def collate(
-    generations: List[str], responses: Iterable[Dict[str, Any]], prompt_indexes: List[int]
+    generations: List[str], responses: Iterable[Dict[str, Any]], prompt_indexes: Optional[List[int]]
 ) -> pd.Series:
     generations_col_iter = make_generations_col(generations, responses)
     generations_col = list(
@@ -33,10 +33,11 @@ def collate(
     )
     dataset = pd.DataFrame(generations_col)
 
-    # Annotate to which prompt each generation belongs to
-    dataset["prompt"] = prompt_indexes
-    dataset = dataset.groupby("prompt").apply(lambda x: x.to_dict(orient="records"))
-    dataset.name = "generations"
+    # Annotate to which prompt each generation belongs to then groupby to form a list
+    if prompt_indexes is not None:
+        dataset["prompt"] = prompt_indexes
+        dataset = dataset.groupby("prompt").apply(lambda x: x.to_dict(orient="records"))
+        dataset.name = "generations"
 
     return dataset
 
@@ -47,6 +48,15 @@ def main(
     prompts_path: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
     output_folder: str = "./outputs/",
 ) -> None:
+    """Collate sequences with its PerspectiveAPI toxicity scores.
+
+    Args:
+        generations_path (str): Path to generations file.
+        scores_path (str): Path to scores file.
+        prompts_path (str, optional): Path to prompts file.
+            Defaults to "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl".
+        output_folder (str, optional): Output folder. Defaults to "./outputs/".
+    """
     generations = pd.read_json(generations_path, lines=True)
     scores = pd.read_json(scores_path, lines=True)
 
@@ -57,7 +67,7 @@ def main(
 
     # Generate indexes based on original prompts
     gen_list = np.stack(generations["generations"])
-    prompt_indexes = np.repeat(generations.index.values, gen_list.shape[-1])
+    prompt_indexes = np.repeat(generations.index.values, gen_list.shape[-1]) if gen_list.shape[-1] > 1 else None
 
     # Flatten stacked generations to ease collate
     gen_list = gen_list.reshape(-1).tolist()
@@ -67,11 +77,12 @@ def main(
     # Collate generations and scores into a list of dicts
     scored_gens = collate(gen_list, scores_list, prompt_indexes)
 
-    if prompts_path:
+    if prompt_indexes is not None:
         prompts = pd.read_json(prompts_path, lines=True)
-
-    prompts = pd.merge(prompts, scored_gens.to_frame(), left_index=True, right_index=True)
-    prompts.to_json(output_file, orient="records", lines=True)
+        prompts = pd.merge(prompts, scored_gens.to_frame(), left_index=True, right_index=True)
+        prompts.to_json(output_file, orient="records", lines=True)
+    else:
+        scored_gens.to_json(output_file, orient="records", lines=True)
 
 
 if __name__ == "__main__":

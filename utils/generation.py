@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Generator, List
+from typing import Callable, Generator, List
 
 import numpy as np
 import pandas as pd
@@ -15,7 +15,25 @@ def load_cache(file: Path):
             for line in tqdm(f, desc=f'Loading cache from {file}'):
                 yield json.loads(line)
 
-def generate(text: List[str], model, tokenizer, max_new_tokens: int, num_return_sequences: int):
+def generate(
+    text: List[str],
+    model: Callable,
+    tokenizer: Callable,
+    max_new_tokens: int,
+    num_return_sequences: int
+) -> np.array:
+    """Generate sequences given a prompt.
+
+    Args:
+        text (List[str]): Batch of prompts.
+        model (Callable): HuggingFace model instance.
+        tokenizer (Callable): HuggingFace tokenizer instance.
+        max_new_tokens (int): Number of tokens to generate.
+        num_return_sequences (int): Number of sequences to generate for each prompt.
+
+    Returns:
+        np.array: Prompt continuations
+    """
     # Batched tokenization and generation
     inputs = tokenizer(
         text,
@@ -23,6 +41,7 @@ def generate(text: List[str], model, tokenizer, max_new_tokens: int, num_return_
         padding=True,
         truncation=False
     ).to(model.device)
+
     ## Nucleous sampling
     outputs = model.generate(
         **inputs,
