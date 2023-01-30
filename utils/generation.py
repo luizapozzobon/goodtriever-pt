@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
-
+import torch
 
 def load_cache(file: Path):
     if file.exists():
@@ -21,7 +21,7 @@ def generate(text: List[str], model, tokenizer, max_new_tokens: int, num_return_
         return_tensors="pt",
         padding=True,
         truncation=False
-    )
+    ).to(model.device)
     ## Nucleous sampling
     outputs = model.generate(
         **inputs,
@@ -77,6 +77,9 @@ def batched_generation(
     model = GPT2LMHeadModel.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = 'left'
+
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
 
     chunks = df.shape[0] // batch_size
     print(f"Iterating on {chunks} chunks...")
