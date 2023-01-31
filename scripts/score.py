@@ -54,21 +54,21 @@ def main(
         rate_limit=perspective_rate_limit
     )
 
+    # Flatten and make list
+    values = np.stack(df[column_name].values).reshape(-1).tolist()
+    del df
+
     # Load cached generations
     num_cached_scores = 0
     for scores in load_cache(out_file):
-        # yield scores
         num_cached_scores += 1
 
     # Remove prompts that have already been generated with
-    df = df.iloc[num_cached_scores:]
-    if df.empty:
-        perspective.stop()
+    values = values[num_cached_scores:]
+    if len(values) == 0:
         print("No more samples to score.")
+        perspective.stop()
         sys.exit()
-
-    # Flatten and make list
-    values = np.stack(df[column_name].values).reshape(-1).tolist()
 
     for i, text in enumerate(values):
         perspective(f'generation-{num_cached_scores + i}', text)
