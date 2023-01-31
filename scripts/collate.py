@@ -3,6 +3,7 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
+import warnings
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -25,11 +26,13 @@ def make_generations_col(generations: List[str], responses: List[Dict]):
 
 
 def collate(
-    generations: List[str], responses: Iterable[Dict[str, Any]], prompt_indexes: Optional[List[int]]
+    generations: List[str],
+    responses: Iterable[Dict[str, Any]],
+    prompt_indexes: Optional[List[int]],
 ) -> pd.Series:
     generations_col_iter = make_generations_col(generations, responses)
     generations_col = list(
-        tqdm(generations_col_iter, total=len(generations), desc="Collating files")
+        tqdm(generations_col_iter, total=len(generations), desc="Collating files", position=1)
     )
     dataset = pd.DataFrame(generations_col)
 
@@ -37,7 +40,6 @@ def collate(
     if prompt_indexes is not None:
         dataset["prompt"] = prompt_indexes
         dataset = dataset.groupby("prompt").apply(lambda x: x.to_dict(orient="records"))
-        dataset.name = "generations"
 
     return dataset
 
@@ -47,6 +49,7 @@ def main(
     scores_path: str,
     prompts_path: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
     output_folder: str = "./outputs/",
+    chunksize: int = int(5e5),
 ) -> None:
     """Collate sequences with its PerspectiveAPI toxicity scores.
 
@@ -58,24 +61,42 @@ def main(
         output_folder (str, optional): Output folder. Defaults to "./outputs/".
     """
     generations = pd.read_json(generations_path, lines=True)
-    scores = pd.read_json(scores_path, lines=True)
 
-    output_file = (
-        Path(output_folder) / f'{Path(generations_path).stem.replace("generations", "collated")}.jsonl'
-    )
-    output_file.parent.mkdir(exist_ok=True, parents=True)
-
-    # Generate indexes based on original prompts
     gen_list = np.stack(generations["generations"])
-    prompt_indexes = np.repeat(generations.index.values, gen_list.shape[-1]) if gen_list.shape[-1] > 1 else None
+    # Generate indexes based on original prompts
+    prompt_indexes = (
+        np.repeat(generations.index.values, gen_list.shape[-1]) if gen_list.shape[-1] > 1 else None
+    )
 
     # Flatten stacked generations to ease collate
     gen_list = gen_list.reshape(-1).tolist()
-    scores_list = scores["response"].tolist()
-    assert len(gen_list) == len(scores_list)
 
-    # Collate generations and scores into a list of dicts
-    scored_gens = collate(gen_list, scores_list, prompt_indexes)
+    scores = pd.read_json(scores_path, lines=True, chunksize=chunksize)
+    scored_gens = pd.Series(dtype="object", name="generations")
+    for i, chunk in enumerate(tqdm(scores, desc="Processing chunks", position=0)):
+        start = chunksize * i
+        end = start + chunksize
+
+        scores_list = chunk["response"].tolist()
+        # Collate generations and scores into a list of dicts
+        scored_gens = pd.concat(
+            [
+                scored_gens,
+                collate(gen_list[start:end], scores_list, prompt_indexes[start:end]),
+            ],
+            axis=0,
+        )
+
+    if len(scored_gens) != len(generations):
+        warnings.warn(
+            f"Length of scored data is {len(scored_gens)}, but was expecting {len(generations)}"
+        )
+
+    output_file = (
+        Path(output_folder)
+        / f'{Path(generations_path).stem.replace("generations", "collated")}.jsonl'
+    )
+    output_file.parent.mkdir(exist_ok=True, parents=True)
 
     if prompt_indexes is not None:
         prompts = pd.read_json(prompts_path, lines=True)
