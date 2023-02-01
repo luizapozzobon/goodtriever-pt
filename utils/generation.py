@@ -42,13 +42,13 @@ def generate(
         truncation=False
     ).to(model.device)
 
-    ## Nucleous sampling
+    ## Nucleus sampling
     outputs = model.generate(
         **inputs,
         do_sample=True,
         num_return_sequences=num_return_sequences,
         max_new_tokens=max_new_tokens,
-        top_p=0.95,
+        top_p=0.90,
         top_k=0,
 
     )
