@@ -76,13 +76,14 @@ def main(
     for i, chunk in enumerate(tqdm(scores, desc="Processing chunks", position=0)):
         start = chunksize * i
         end = start + chunksize
+        indexes = prompt_indexes[start:end] if prompt_indexes is not None else None
 
         scores_list = chunk["response"].tolist()
         # Collate generations and scores into a list of dicts
         scored_gens = pd.concat(
             [
                 scored_gens,
-                collate(gen_list[start:end], scores_list, prompt_indexes[start:end]),
+                collate(gen_list[start:end], scores_list, indexes),
             ],
             axis=0,
         )
