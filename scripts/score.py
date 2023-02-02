@@ -4,8 +4,8 @@ Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
 import sys
-import time
 from pathlib import Path
+from typing import Optional
 
 import fire
 import numpy as np
@@ -19,7 +19,8 @@ def main(
     filename: str = "outputs/prompted_gpt2_generations.jsonl",
     column_name: str = "generations",
     out_folder: str = "./outputs/",
-    perspective_rate_limit: str = 50
+    out_file: Optional[str] = None,
+    perspective_rate_limit: str = 50,
 ) -> None:
     """Score sequences of text with PerspectiveAPI.
 
@@ -40,18 +41,33 @@ def main(
     if not filename.exists():
         raise ValueError(f"{filename} not found.")
 
-    df = pd.read_json(filename, lines=True)
-    out_file = Path(out_folder) / f'{filename.stem.replace("generations", "perspective")}.jsonl'
+    if out_file is None:
+        if "generations" in filename.stem:
+            out_file = f'{filename.stem.replace("generations", "perspective")}.jsonl'
+        else:
+            raise ValueError(
+                "`generations` keyword not found in the input file. Please define an output filename manually."
+            )
 
-    if not isinstance(df.iloc[0][column_name], list):
-        raise ValueError(f"`{column_name}` should have lists as value")
+    out_file = Path(out_folder) / out_file
+
+    df = pd.read_json(filename, lines=True)
 
     out_file.parent.mkdir(exist_ok=True, parents=True)
 
+    if isinstance(df.iloc[0][column_name], dict):
+        df[column_name] = df[column_name].apply(lambda x: [x.get("text")])
+    else:
+        raise NotImplementedError(
+            "This file currently supports lists or dicts in `column_name`."
+            "If dict, make sure there's a `text` key."
+        )
+
+    num_samples = len(df.iloc[0][column_name])
     perspective = PerspectiveWorker(
         out_file=out_file,
-        total=df.shape[0] * len(df.iloc[0][column_name]),
-        rate_limit=perspective_rate_limit
+        total=df.shape[0] * num_samples,
+        rate_limit=perspective_rate_limit,
     )
 
     # Flatten and make list
@@ -71,7 +87,7 @@ def main(
         sys.exit()
 
     for i, text in enumerate(values):
-        perspective(f'generation-{num_cached_scores + i}', text)
+        perspective(f"generation-{num_cached_scores + i}", text)
 
     perspective.stop()
 
