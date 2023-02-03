@@ -4,16 +4,8 @@ from typing import Callable, Generator, List
 
 import numpy as np
 import pandas as pd
-import torch
 from tqdm import tqdm
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
-
-def load_cache(file: Path):
-    if file.exists():
-        with file.open() as f:
-            for line in tqdm(f, desc=f'Loading cache from {file}'):
-                yield json.loads(line)
 
 def generate(
     text: List[str],
@@ -37,12 +29,7 @@ def generate(
         np.array: Prompt continuations
     """
     # Batched tokenization and generation
-    inputs = tokenizer(
-        text,
-        return_tensors="pt",
-        padding=True,
-        truncation=False
-    ).to(model.device)
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=False).to(model.device)
 
     ## Nucleus sampling. As used in the RTP paper/repo.
     # "Top-p sampling chooses from the smallest possible set of words
@@ -54,16 +41,14 @@ def generate(
         max_new_tokens=max_new_tokens,
         top_p=0.90,
         top_k=0,
-
     )
     continuations = tokenizer.batch_decode(
-        outputs[:, inputs['input_ids'].shape[-1]:],
+        outputs[:, inputs["input_ids"].shape[-1] :],
         clean_up_tokenization_spaces=True,
         skip_special_tokens=True,
     )
     # Group generations from same prompt
-    continuations = np.array(continuations).reshape(
-        (-1, num_return_sequences)).tolist()
+    continuations = np.array(continuations).reshape((-1, num_return_sequences)).tolist()
 
     return continuations
 
@@ -71,7 +56,8 @@ def generate(
 def batched_generation(
     output_file: str,
     prompts: pd.DataFrame,
-    model_name: str,
+    model,
+    tokenizer,
     batch_size: int,
     num_return_sequences: int,
     max_new_tokens: int,
@@ -103,10 +89,7 @@ def batched_generation(
     chunks = len(prompts) // batch_size
     print(f"Iterating on {chunks} chunks...")
     for chunk in tqdm(np.array_split(prompts, chunks), total=chunks):
-        if not use_eos:
-            chunk = pd.json_normalize(chunk['prompt'])['text']
-
-        chunk = chunk.values.tolist()
+        chunk = chunk["text"].values.tolist()
 
         continuations = generate(
             chunk,
@@ -116,10 +99,7 @@ def batched_generation(
             max_new_tokens=max_new_tokens,
             top_p=top_p
         )
-        data = [
-            {"prompt": p, "generations": c}
-            for p, c in zip(prompts, continuations)
-        ]
+        data = [{"prompt": p, "generations": c} for p, c in zip(chunk, continuations)]
         for d in data:
             with output_file.open('a') as f:
                 print(json.dumps(d), file=f)

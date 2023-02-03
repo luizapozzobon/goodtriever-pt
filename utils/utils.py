@@ -68,7 +68,6 @@ def load_cache(file: Path) -> int:
 
     return lines
 
-
 def batchify(data: Iterable[T], batch_size: int) -> Iterable[List[T]]:
     """Create batches of `batch_size` from an iterable."""
     assert batch_size > 0
