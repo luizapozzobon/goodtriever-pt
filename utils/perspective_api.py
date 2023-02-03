@@ -37,9 +37,7 @@ def unpack_scores(response_json: dict) -> Optional[Tuple[dict, dict]]:
         for span_score_dict in scores["spanScores"]:
             assert span_score_dict["score"]["type"] == "PROBABILITY"
             span = (span_score_dict["begin"], span_score_dict["end"])
-            span_scores.setdefault(span, {})[attribute] = span_score_dict["score"][
-                "value"
-            ]
+            span_scores.setdefault(span, {})[attribute] = span_score_dict["score"]["value"]
 
     return summary_scores, span_scores
 
@@ -65,9 +63,7 @@ class PerspectiveAPI:
         self.last_request_time = time.time()
 
         # Keys guaranteed in insertion order (Python 3.7+)
-        responses = {
-            str(uid): None for uid in range(self.next_uid, self.next_uid + len(texts))
-        }
+        responses = {str(uid): None for uid in range(self.next_uid, self.next_uid + len(texts))}
         self.next_uid += len(texts)
 
         def response_callback(request_id, response, exception):
@@ -97,9 +93,7 @@ class PerspectiveAPI:
 
         # Set up progress bar
         if not pbar:
-            total = (
-                len(corpus) if isinstance(corpus, collections.abc.Sequence) else None
-            )
+            total = len(corpus) if isinstance(corpus, collections.abc.Sequence) else None
             pbar = tqdm(total=total, dynamic_ncols=True)
         pbar.set_description(f"Perspective API")
 
@@ -147,7 +141,7 @@ class PerspectiveAPI:
             "comment": {"text": text},
             "requestedAttributes": {attr: {} for attr in PERSPECTIVE_API_ATTRIBUTES},
             "spanAnnotations": True,
-            "doNotStore": True
+            "doNotStore": True,
         }
         return service.comments().analyze(body=analyze_request)
 

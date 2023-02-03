@@ -20,7 +20,7 @@ def main(
     column_name: str = "generations",
     out_folder: str = "./outputs/",
     out_file: Optional[str] = None,
-    perspective_rate_limit: str = 50,
+    perspective_rate_limit: str = 1,
 ) -> None:
     """Score sequences of text with PerspectiveAPI.
 
@@ -30,8 +30,8 @@ def main(
         column_name (str, optional): Name of the field where the text sequences are.
             Defaults to "generations".
         out_folder (str, optional): Output folder. Defaults to "./outputs/".
-        perspective_rate_limit (str, optional): Maximum number of API calls per minute.
-            Defaults to 50.
+        perspective_rate_limit (str, optional): Maximum number of API calls per second.
+            Defaults to 1.
 
     Raises:
         ValueError: If `filename` does not exist.
