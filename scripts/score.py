@@ -49,19 +49,18 @@ def main(
                 "`generations` keyword not found in the input file. Please define an output filename manually."
             )
 
-    out_file = Path(out_folder) / out_file
-
     df = pd.read_json(filename, lines=True)
-
-    out_file.parent.mkdir(exist_ok=True, parents=True)
 
     if isinstance(df.iloc[0][column_name], dict):
         df[column_name] = df[column_name].apply(lambda x: [x.get("text")])
-    else:
+    elif not isinstance(df.iloc[0][column_name], list):
         raise NotImplementedError(
             "This file currently supports lists or dicts in `column_name`."
             "If dict, make sure there's a `text` key."
         )
+
+    out_file = Path(out_folder) / out_file
+    out_file.parent.mkdir(exist_ok=True, parents=True)
 
     num_samples = len(df.iloc[0][column_name])
     perspective = PerspectiveWorker(
