@@ -34,6 +34,7 @@ def setup_model(model_name: str, knn_args):
             lmbda=knn_args.lmbda,
             knn_temp=knn_args.knn_temp,
             probe=knn_args.probe,
+            discourage_retrieved_nn=knn_args.discourage_retrieved_nn
         )
 
     if knn_wrapper is not None:
