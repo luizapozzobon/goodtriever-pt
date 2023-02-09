@@ -1,7 +1,14 @@
 from dataclasses import dataclass, field
 
+from transformers import HfArgumentParser
+
 from knn_transformers.knnlm import DIST, KEY_TYPE
 
+
+class GenerationParser:
+    def __init__(self):
+        parser = HfArgumentParser((GenerationArguments, KNNArguments))
+        self.gen_args, self.knn_args = parser.parse_args_into_dataclasses()
 
 @dataclass
 class GenerationArguments:

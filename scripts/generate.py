@@ -4,12 +4,12 @@ Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
 from pathlib import Path
+from typing import Iterable, Optional
 
 import numpy as np
 import pandas as pd
-from transformers import HfArgumentParser
 
-from generation.args import GenerationArguments, KNNArguments
+from generation.args import GenerationParser
 from generation.base import batched_generation
 from generation.models import setup_model, setup_tokenizer
 from utils.utils import load_cache, structure_output_filepath
@@ -36,8 +36,7 @@ def build_filename(gen_args, knn_args) -> str:
             name += "_toxic"
     return name
 
-
-def main() -> None:
+def main(parser: Optional = None) -> Iterable:
     """Generate sequences of text with HuggingFace models.
 
     By default, the kNN retrieval system is deactivated and generations
@@ -53,8 +52,11 @@ def main() -> None:
     Yields:
         np.array: Generated sequence array.
     """
-    parser = HfArgumentParser((GenerationArguments, KNNArguments))
-    gen_args, knn_args = parser.parse_args_into_dataclasses()
+
+    if parser is None:
+        parser = GenerationParser()
+
+    gen_args, knn_args = parser.gen_args, parser.knn_args
 
     if gen_args.use_eos:
         if gen_args.model_name in ["gpt2", "gpt2-medium"]:
