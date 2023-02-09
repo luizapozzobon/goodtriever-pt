@@ -118,6 +118,7 @@ def main(
     else:
         scored_gens.drop(columns=[0]).to_json(output_file, orient="records", lines=True)
 
+    return output_file
 
 if __name__ == "__main__":
     fire.Fire(main)

@@ -3,9 +3,8 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
-import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import fire
 import numpy as np
@@ -83,12 +82,14 @@ def main(
     if len(values) == 0:
         print("No more samples to score.")
         perspective.stop()
-        sys.exit()
+        return out_file
 
     for i, text in enumerate(values):
         perspective(f"generation-{num_cached_scores + i}", text)
 
     perspective.stop()
+
+    return out_file
 
 
 if __name__ == "__main__":
