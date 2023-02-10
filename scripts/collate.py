@@ -3,6 +3,7 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
+import json
 import warnings
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Union
@@ -30,8 +31,9 @@ def make_generations_col(generations: List[str], responses: List[Dict]) -> Dict:
 def collate(
     generations: List[str],
     responses: Iterable[Dict[str, Any]],
+    prompts: Optional[pd.DataFrame],
     prompt_indexes: Optional[List[int]],
-) -> pd.Series:
+) -> pd.DataFrame:
     """Collate generations texts with their scores by perspective API."""
     generations_col_iter = make_generations_col(generations, responses)
     generations_col = list(
@@ -39,11 +41,18 @@ def collate(
     )
     dataset = pd.DataFrame(generations_col)
 
-    # Annotate to which prompt each generation belongs to then groupby to form a list
-    if prompt_indexes is not None:
+    # Annotate to which prompt each generation belongs to then groupby
+    if prompts is not None and prompt_indexes is not None:
+        prompts = prompts.iloc[np.unique(prompt_indexes)]
         dataset["prompt"] = prompt_indexes
-        dataset = dataset.groupby("prompt").apply(lambda x: x.to_dict(orient="records"))
-        dataset.name = "generations"
+        dataset = (
+            dataset.groupby("prompt")
+            .apply(lambda x: x.to_dict(orient="records"))
+            .to_frame()
+            .rename(columns={0: "generations"})
+        )
+        dataset = pd.merge(
+            prompts, dataset, left_index=True, right_index=True).drop(columns=["prompt"])
 
     return dataset
 
@@ -71,54 +80,55 @@ def main(
             with pandas. Default value chosen as a reasonable number that usually
             fits memory. Defaults to 100_000.
     """
+
     generations = pd.read_json(generations_path, lines=True)
-
     gen_list = np.stack(generations["generations"])
-    # Generate indexes based on original prompts
-    prompt_indexes = (
-        np.repeat(generations.index.values, gen_list.shape[-1]) if gen_list.shape[-1] > 1 else None
-    )
-
-    # Flatten stacked generations to ease collate
+    num_gens = gen_list.shape[1]
     gen_list = gen_list.reshape(-1).tolist()
 
+    if chunksize % num_gens != 0:
+        raise ValueError(
+            "`chunksize` should be divisible by the number of generations for each prompt "
+            f"The number of continuations for each prompt are: {gen_list.shape[1]}."
+        )
+
+    # Generate indexes based on original prompts
+    prompt_indexes = np.repeat(generations.index.values, num_gens) if num_gens > 1 else None
+    prompts = pd.read_json(prompts_path, lines=True) if prompt_indexes is not None else None
+
+    if prompts is not None and not generations.index.equals(prompts.index):
+        raise ValueError("Generations and Prompts indexes do not match.")
+
     scores_path = Path(scores_path)
-    scores = pd.read_json(scores_path, lines=True, chunksize=chunksize)
-    scored_gens = pd.Series(dtype="object", name="generations")
-    for i, chunk in enumerate(tqdm(scores, desc="Processing chunks", position=0)):
-        start = chunksize * i
-        end = start + chunksize
-        indexes = prompt_indexes[start:end] if prompt_indexes is not None else None
-
-        scores_list = chunk["response"].tolist()
-        # Collate generations and scores into a list of dicts
-        scored_gens = pd.concat(
-            [
-                scored_gens,
-                collate(gen_list[start:end], scores_list, indexes),
-            ],
-            axis=0,
-        )
-
-    if len(scored_gens) != len(generations):
-        warnings.warn(
-            f"Length of scored data is {len(scored_gens)}, but was expecting {len(generations)}"
-        )
-
     output_file = structure_output_filepath(
         step="collate",
         output_folder=output_folder or scores_path.parent,
         previous_filename=scores_path.name,
     )
 
-    if prompt_indexes is not None:
-        prompts = pd.read_json(prompts_path, lines=True)
-        prompts = pd.merge(prompts, scored_gens.to_frame(), left_index=True, right_index=True)
-        prompts.to_json(output_file, orient="records", lines=True)
-    else:
-        scored_gens.drop(columns=[0]).to_json(output_file, orient="records", lines=True)
+    scores = pd.read_json(scores_path, lines=True, chunksize=chunksize)
+    lines = 0
+    for i, chunk in enumerate(tqdm(scores, desc="Collating chunks", position=0)):
+        start = chunksize * i
+        end = start + chunksize
+        indexes = prompt_indexes[start:end] if prompt_indexes is not None else None
+
+        scores_list = chunk["response"].tolist()
+        scored_gens = collate(gen_list[start:end], scores_list, prompts, indexes)
+
+        with open(output_file, "a") as f:
+            for _, row in scored_gens.iterrows():
+                print(json.dumps(row.to_dict()), file=f)
+                lines += 1
+
+    if lines != len(generations):
+        warnings.warn(
+            f"Number of lines of collated data is {lines}, but was expecting {len(generations)}"
+        )
 
     return output_file
 
+
 if __name__ == "__main__":
+
     fire.Fire(main)
