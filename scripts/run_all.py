@@ -9,8 +9,11 @@ from scripts.generate import main as generate
 from scripts.score import main as score
 
 
-def main(perspective_rate_limit=110, perplexity_model="gpt2-medium", collate_chunksize: int = 1e5):
-
+def main(
+    perspective_rate_limit=110,
+    perplexity_model="gpt2-medium",
+    collate_chunksize: int = int(1e5)
+):
     parser = GenerationParser()
 
     # Generate

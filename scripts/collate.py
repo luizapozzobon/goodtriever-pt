@@ -51,8 +51,7 @@ def collate(
             .to_frame()
             .rename(columns={0: "generations"})
         )
-        dataset = pd.merge(
-            prompts, dataset, left_index=True, right_index=True).drop(columns=["prompt"])
+        dataset = pd.merge(prompts, dataset, left_index=True, right_index=True)
 
     return dataset
 
@@ -81,6 +80,10 @@ def main(
             fits memory. Defaults to 100_000.
     """
 
+    if output_file.exists():
+        print(f"Collated file {output_file} already exists. Returning.")
+        return output_file
+
     generations = pd.read_json(generations_path, lines=True)
     gen_list = np.stack(generations["generations"])
     num_gens = gen_list.shape[1]
@@ -105,10 +108,12 @@ def main(
         output_folder=output_folder or scores_path.parent,
         previous_filename=scores_path.name,
     )
-
+    # TODO add a check to compare scores len to generations
     scores = pd.read_json(scores_path, lines=True, chunksize=chunksize)
     lines = 0
-    for i, chunk in enumerate(tqdm(scores, desc="Collating chunks", position=0)):
+    for i, chunk in enumerate(
+        tqdm(scores, desc="Collating chunks", position=0)
+    ):
         start = chunksize * i
         end = start + chunksize
         indexes = prompt_indexes[start:end] if prompt_indexes is not None else None
