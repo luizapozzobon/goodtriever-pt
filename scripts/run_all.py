@@ -9,7 +9,7 @@ from scripts.generate import main as generate
 from scripts.score import main as score
 
 
-def main(perspective_rate_limit=110, perplexity_model="gpt2-medium"):
+def main(perspective_rate_limit=110, perplexity_model="gpt2-medium", collate_chunksize: int = 1e5):
 
     parser = GenerationParser()
 
@@ -27,7 +27,10 @@ def main(perspective_rate_limit=110, perplexity_model="gpt2-medium"):
     )
 
     collated_path = collate(
-        generations_path=generations_path, scores_path=scores_path, out_folder=out_folder
+        generations_path=generations_path,
+        scores_path=scores_path,
+        out_folder=out_folder,
+        chunksize=collate_chunksize,
     )
 
     if "eos_" in collated_path.name:
