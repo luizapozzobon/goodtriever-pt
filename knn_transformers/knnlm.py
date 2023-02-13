@@ -291,8 +291,8 @@ class KNNWrapper(object):
             # interpolated = torch.log(np.exp(np.log(1 + lmbda) + lm_log_probs) - np.exp(np.log(lmbda) + knn_log_probs))
             interpolated = torch.log(
                 torch.nn.functional.relu(
-                    np.exp(np.log(1 + lmbda) + lm_log_probs)
-                    - np.exp(np.log(lmbda) + knn_log_probs)
+                    torch.exp(np.log(1 + lmbda) + lm_log_probs)
+                    - torch.exp(np.log(lmbda) + knn_log_probs)
                 )
             )
         else:  # original
