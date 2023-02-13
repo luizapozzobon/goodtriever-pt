@@ -73,7 +73,8 @@ def main(parser: Optional = None) -> Iterable:
 
     else:
         df = pd.read_json(gen_args.prompts_path, lines=True)
-        df = pd.json_normalize(df["prompt"])
+        if 'prompt' in df.columns:
+            df = pd.json_normalize(df["prompt"])
 
     # Create base filename
     if gen_args.output_filename is None:
