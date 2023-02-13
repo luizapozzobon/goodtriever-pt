@@ -3,6 +3,7 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
+import json
 from pathlib import Path
 from typing import Iterable, Optional
 
@@ -35,6 +36,7 @@ def build_filename(gen_args, knn_args) -> str:
         else:
             name += "_toxic"
     return name
+
 
 def main(parser: Optional = None) -> Iterable:
     """Generate sequences of text with HuggingFace models.
@@ -82,6 +84,13 @@ def main(parser: Optional = None) -> Iterable:
         output_folder=Path(gen_args.output_folder),
         previous_filename=gen_args.output_filename,
     )
+
+    # Save generation args
+    args_filename = output_file.parent / (
+        "eos_args.json" if gen_args.use_eos else "prompted_args.json"
+    )
+    with open(args_filename, "w") as f:
+        f.write(json.dumps(parser.all_args, indent=2, default=str))
 
     # Remove prompts that have already been generated
     lines = load_cache(output_file)

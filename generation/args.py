@@ -10,6 +10,12 @@ class GenerationParser:
         parser = HfArgumentParser((GenerationArguments, KNNArguments))
         self.gen_args, self.knn_args = parser.parse_args_into_dataclasses()
 
+        self.all_args = {
+            "GenerationArguments": vars(self.gen_args),
+            "KNNArguments": vars(self.knn_args),
+        }
+
+
 @dataclass
 class GenerationArguments:
     """
