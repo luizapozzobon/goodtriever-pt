@@ -18,7 +18,8 @@ Prompted Generation uses RealToxicityPrompts to generate continuations to each p
 
 ```bash
 python -m scripts.generate \
-    --filename gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl \
+    --output_folder outputs \
+    --prompts_path gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl \
     --model_name gpt2 \
     --num_return_sequences 25 \
     --max_new_tokens 20
@@ -30,6 +31,7 @@ Generates a sequence with up to 20 tokens from an EOS token. As in the paper, 10
 
 ```bash
 python -m scripts.generate \
+    --output_folder outputs \
     --model_name gpt2 \
     --use_eos True
 ```
@@ -40,7 +42,7 @@ Files are saved as `{eos/prompted}_{model_name}_perspective.jsonl`.
 
 ```bash
 python -m scripts.score \
-    --filename outputs/prompted_gpt2_generations.jsonl \
+    --input_filename outputs/prompted_gpt2_generations.jsonl \
     --perspective_rate_limit 50
 ```
 
@@ -56,7 +58,7 @@ export PERSPECTIVE_API_KEY=$API_KEY
 In this step the prompts, generations and scores are collated. Files are saved as `{eos/prompted}_{model_name}_collated.jsonl`.
 
 ```bash
-python -m scripts.score \
+python -m scripts.collate \
     outputs/prompted_gpt2_generations.jsonl \
     outputs/prompted_gpt2_perspective.jsonl
 ```
