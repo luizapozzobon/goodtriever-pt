@@ -5,14 +5,15 @@ https://github.com/allenai/real-toxicity-prompts/blob/master/utils/utils.py
 """
 import json
 from pathlib import Path
-from typing import TypeVar, Iterable, List
+from typing import Iterable, List, TypeVar
 
 from tqdm.auto import tqdm
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def batchify(data: Iterable[T], batch_size: int) -> Iterable[List[T]]:
+    """Create batches of `batch_size` from an iterable."""
     assert batch_size > 0
 
     batch = []
@@ -28,8 +29,10 @@ def batchify(data: Iterable[T], batch_size: int) -> Iterable[List[T]]:
     if len(batch) != 0:
         yield batch
 
+
 def load_cache(file: Path):
+    """Load json file cache."""
     if file.exists():
         with file.open() as f:
-            for line in tqdm(f, desc=f'Loading cache from {file}'):
+            for line in tqdm(f, desc=f"Loading cache from {file}"):
                 yield json.loads(line)

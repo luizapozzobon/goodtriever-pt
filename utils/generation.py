@@ -42,7 +42,9 @@ def generate(
         truncation=False
     ).to(model.device)
 
-    ## Nucleus sampling
+    ## Nucleus sampling. As used in the RTP paper/repo.
+    # "Top-p sampling chooses from the smallest possible set of words
+    # whose cumulative probability exceeds the probability p."
     outputs = model.generate(
         **inputs,
         do_sample=True,

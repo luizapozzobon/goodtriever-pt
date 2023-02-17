@@ -16,7 +16,8 @@ from utils.constants import PERSPECTIVE_API_ATTRIBUTES_LOWER
 from utils.perspective_api import unpack_scores
 
 
-def make_generations_col(generations: List[str], responses: List[Dict]):
+def make_generations_col(generations: List[str], responses: List[Dict]) -> Dict:
+    """Join generation text to its results from PerpectiveAPI scores into a dict."""
     for generation, response in zip(generations, responses):
         if isinstance(response, dict):
             response = unpack_scores(response)[0]
@@ -30,6 +31,7 @@ def collate(
     responses: Iterable[Dict[str, Any]],
     prompt_indexes: Optional[List[int]],
 ) -> pd.Series:
+    """Collate generations texts with their scores by perspective API."""
     generations_col_iter = make_generations_col(generations, responses)
     generations_col = list(
         tqdm(generations_col_iter, total=len(generations), desc="Collating files", position=1)
@@ -49,7 +51,7 @@ def main(
     scores_path: str,
     prompts_path: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
     output_folder: str = "./outputs/",
-    chunksize: int = int(5e5),
+    chunksize: int = int(1e5),
 ) -> None:
     """Collate sequences with its PerspectiveAPI toxicity scores.
 
@@ -59,6 +61,9 @@ def main(
         prompts_path (str, optional): Path to prompts file.
             Defaults to "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl".
         output_folder (str, optional): Output folder. Defaults to "./outputs/".
+        chunksize (int): Chunksize to split large scores files by when loading
+            with pandas. Default value chosen as a reasonable number that usually
+            fits memory. Defaults to 100_000.
     """
     generations = pd.read_json(generations_path, lines=True)
 

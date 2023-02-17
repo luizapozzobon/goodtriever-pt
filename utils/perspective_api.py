@@ -34,6 +34,7 @@ def unpack_scores(response_json: dict) -> Optional[Tuple[dict, dict]]:
         summary_scores[attribute] = scores["summaryScore"]["value"]
 
         # Save span scores
+        # https://developers.perspectiveapi.com/s/about-the-api-score?language=en_US
         for span_score_dict in scores["spanScores"]:
             assert span_score_dict["score"]["type"] == "PROBABILITY"
             span = (span_score_dict["begin"], span_score_dict["end"])
@@ -43,8 +44,14 @@ def unpack_scores(response_json: dict) -> Optional[Tuple[dict, dict]]:
 
 
 class PerspectiveAPI:
-    def __init__(self, api_key: str = PERSPECTIVE_API_KEY, rate_limit: int = 25):
-        self.service = self._make_service(api_key)
+    def __init__(self, rate_limit: int = 25):
+        """Request scores from PerspectiveAPI at a given `rate_limit`.
+
+        Args:
+            rate_limit (int): PerspectiveAPI requests per second limit.
+                By default its 1 but you can request a higher value.
+        """
+        self.service = self._make_service()
         self.last_request_time = -1  # satisfies initial condition
         self.rate_limit = rate_limit
         self.next_uid = 0
@@ -124,12 +131,12 @@ class PerspectiveAPI:
                 pbar.set_postfix(failures=num_failures, rate_limt=self.rate_limit)
 
     @staticmethod
-    def _make_service(api_key: str):
+    def _make_service():
         # Generate API client object dynamically based on service name and version
         client = discovery.build(
             "commentanalyzer",
             "v1alpha1",
-            developerKey=api_key,
+            developerKey=PERSPECTIVE_API_KEY,
             discoveryServiceUrl="https://commentanalyzer.googleapis.com/$discovery/rest?version=v1alpha1",
             static_discovery=False,
         )
@@ -150,6 +157,14 @@ class PerspectiveWorker:
     SENTINEL = "STOP"
 
     def __init__(self, out_file: Path, total: int, rate_limit: int):
+        """Multiprocess requests scores from PerspectiveAPI at a given `rate_limit`.
+
+        Args:
+            out_file (Path): Out filename to save responses to to.
+            total (int): Total number of requests.
+            rate_limit (int): PerspectiveAPI requests per second limit.
+                By default its 1 but you can request a higher value.
+        """
         if not rate_limit:
             print("Disabling Perspective API (rps is 0)")
             self.enabled = False
