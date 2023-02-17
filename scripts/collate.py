@@ -48,12 +48,12 @@ def collate(
 
 
 def main(
-    generations_path: str,
-    scores_path: str,
-    prompts_path: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
-    output_folder: Optional[str] = None,
+    generations_path: Union[str, Path],
+    scores_path: Union[str, Path],
+    prompts_path: str = "gs://cohere-dev/luiza/model-safety/outputs/rtp_rescore/rtp_prompts_rescored.jsonl",
+    out_folder: Union[str, Path] = "./outputs/",
     chunksize: int = int(1e5),
-) -> None:
+) -> Union[str, Path]:
     """Collate generations with its PerspectiveAPI toxicity scores and pre-scored prompts.
 
     `prompts_path` points to a file that contains a `prompt` column with dict values.
