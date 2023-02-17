@@ -15,7 +15,7 @@ from googleapiclient.errors import HttpError
 from tqdm.auto import tqdm
 
 from utils.constants import PERSPECTIVE_API_ATTRIBUTES, PERSPECTIVE_API_KEY
-from utils.utils import batchify, load_cache
+from utils.utils import _load_cache, batchify
 
 
 def unpack_scores(response_json: dict) -> Optional[Tuple[dict, dict]]:
@@ -172,7 +172,7 @@ class PerspectiveWorker:
         self.enabled = True
 
         self.requests_handled = set()
-        for response in load_cache(out_file):
+        for response in _load_cache(out_file):
             self.requests_handled.add(response["request_id"])
         total -= len(self.requests_handled)
 

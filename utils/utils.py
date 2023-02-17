@@ -53,15 +53,15 @@ def structure_output_filepath(
     return output_file
 
 
-def load_cache(file: Path) -> int:
-    """Load json file and return number of cached lines."""
-
-    def _load_cache(file: Path):
+def _load_cache(file: Path):
         if file.exists():
             with file.open() as f:
                 for line in tqdm(f, desc=f"Loading cache from {file}"):
                     yield json.loads(line)
 
+
+def load_cache(file: Path) -> int:
+    """Load json file and return number of cached lines."""
     lines = 0
     for _ in _load_cache(file):
         lines += 1
