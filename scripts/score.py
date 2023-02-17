@@ -11,8 +11,14 @@ import fire
 import numpy as np
 import pandas as pd
 
+from utils.constants import PERSPECTIVE_API_KEY
 from utils.perspective_api import PerspectiveWorker
 from utils.utils import load_cache, structure_output_filepath
+
+if PERSPECTIVE_API_KEY is None:
+    raise ValueError(
+        "Please run `export PERSPECTIVE_API_KEY=´key´ if you wish to use PerspectiveAPI."
+    )
 
 
 def main(

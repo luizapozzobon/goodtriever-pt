@@ -7,11 +7,6 @@ https://github.com/allenai/real-toxicity-prompts/blob/master/utils/constants.py
 import os
 
 PERSPECTIVE_API_KEY = os.environ.get("PERSPECTIVE_API_KEY", None)
-if PERSPECTIVE_API_KEY is None:
-    warnings.warn(
-        "Please run `export PERSPECTIVE_API_KEY=´key´ if you wish to use PerspectiveAPI."
-    )
-
 
 # All attributes can be found here:
 # https://github.com/conversationai/perspectiveapi/blob/master/2-api/models.md

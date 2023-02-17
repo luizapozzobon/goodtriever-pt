@@ -115,7 +115,7 @@ def main(
         prompts = pd.merge(prompts, scored_gens.to_frame(), left_index=True, right_index=True)
         prompts.to_json(output_file, orient="records", lines=True)
     else:
-        scored_gens.to_json(output_file, orient="records", lines=True)
+        scored_gens.drop(columns=[0]).to_json(output_file, orient="records", lines=True)
 
 
 if __name__ == "__main__":
