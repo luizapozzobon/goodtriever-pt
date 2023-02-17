@@ -5,7 +5,6 @@ https://github.com/allenai/real-toxicity-prompts/blob/master/utils/constants.py
 """
 
 import os
-import warnings
 
 PERSPECTIVE_API_KEY = os.environ.get("PERSPECTIVE_API_KEY", None)
 if PERSPECTIVE_API_KEY is None:

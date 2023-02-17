@@ -17,6 +17,25 @@ from utils.utils import load_cache, structure_output_filepath
 ALLOWED_MODELS = ["gpt2", "gpt2-medium"]
 
 
+def build_filename(gen_args, knn_args) -> str:
+    """Build filename from user arguments."""
+    name = f'{"eos" if gen_args.use_eos else "prompted"}_{gen_args.model_name}'
+    if gen_args.use_eos:
+        name = "eos"
+    else:
+        name = "prompted"
+
+    name += f"_{gen_args.model_name}"
+
+    if knn_args.knn:
+        name += "_knn"
+        name += f"_{str(knn_args.lmbda).replace('.','')}"
+        if knn_args.discourage_retrieved_nn:
+            name += "_non-toxic"
+        else:
+            name += "_toxic"
+    return name
+
 
 def main() -> None:
     """Generate sequences of text with HuggingFace models.
@@ -46,14 +65,14 @@ def main() -> None:
         df = pd.read_json(gen_args.prompts_path, lines=True)
         df = pd.json_normalize(df["prompt"])
 
-    if gen_args.out_filename is None:
-        name = f'{"eos" if gen_args.use_eos else "prompted"}_{gen_args.model_name}'
-        name += f'{"_knn" if knn_args.knn else ""}'
-        name += f'{"_non-toxic" if knn_args.discourage_retrieved_nn else "toxic"}'
-        name += '_generations.jsonl'
+    # Create base filename
+    if gen_args.output_filename is None:
+        gen_args.output_filename = build_filename(gen_args, knn_args)
 
     output_file = structure_output_filepath(
-        step="generation", output_folder=gen_args.output_folder, previous_filename=name
+        step="generation",
+        output_folder=Path(gen_args.output_folder),
+        previous_filename=gen_args.output_filename,
     )
 
     # Remove prompts that have already been generated
@@ -65,7 +84,6 @@ def main() -> None:
     tokenizer = setup_tokenizer(gen_args.model_name)
     model = setup_model(gen_args.model_name, knn_args)
 
-
     yield from batched_generation(
         output_file,
         df,
@@ -75,7 +93,6 @@ def main() -> None:
         num_return_sequences=gen_args.num_return_sequences,
         max_new_tokens=gen_args.max_new_tokens,
         top_p=gen_args.top_p,
-        out_filename=output_file,
     )
 
 

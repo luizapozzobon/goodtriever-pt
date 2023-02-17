@@ -54,10 +54,11 @@ def structure_output_filepath(
 
 
 def _load_cache(file: Path):
-        if file.exists():
-            with file.open() as f:
-                for line in tqdm(f, desc=f"Loading cache from {file}"):
-                    yield json.loads(line)
+    """Load json file and return number of cached lines."""
+    if file.exists():
+        with file.open() as f:
+            for line in tqdm(f, desc=f"Loading cache from {file}"):
+                yield json.loads(line)
 
 
 def load_cache(file: Path) -> int:
@@ -67,6 +68,7 @@ def load_cache(file: Path) -> int:
         lines += 1
 
     return lines
+
 
 def batchify(data: Iterable[T], batch_size: int) -> Iterable[List[T]]:
     """Create batches of `batch_size` from an iterable."""

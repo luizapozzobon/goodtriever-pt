@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Callable, Generator, List
+from typing import Any, Callable, Generator, List
 
 import numpy as np
 import pandas as pd
@@ -13,7 +13,7 @@ def generate(
     tokenizer: Callable,
     max_new_tokens: int,
     num_return_sequences: int,
-    top_p: float
+    top_p: float,
 ) -> np.array:
     """Generate sequences given a prompt.
 
@@ -39,7 +39,7 @@ def generate(
         do_sample=True,
         num_return_sequences=num_return_sequences,
         max_new_tokens=max_new_tokens,
-        top_p=0.90,
+        top_p=top_p,
         top_k=0,
     )
     continuations = tokenizer.batch_decode(
@@ -54,37 +54,16 @@ def generate(
 
 
 def batched_generation(
-    output_file: str,
+    output_file: Path,
     prompts: pd.DataFrame,
-    model,
-    tokenizer,
+    model: Any,
+    tokenizer: Any,
     batch_size: int,
     num_return_sequences: int,
     max_new_tokens: int,
     top_p: float,
-    use_eos: bool = False
 ) -> Generator:
     """https://github.com/allenai/real-toxicity-prompts/blob/master/generation/generation.py#L61"""
-
-    # Load cached generations
-    num_cached_generations = 0
-    for generation in load_cache(output_file):
-        yield generation
-        num_cached_generations += 1
-
-    # Remove prompts that have already been generated with
-    prompts = prompts.iloc[num_cached_generations:]
-    if prompts.empty:
-        return
-
-    # Setup model
-    tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-    model = GPT2LMHeadModel.from_pretrained(model_name)
-    tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = 'left'
-
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    model = model.to(device)
 
     chunks = len(prompts) // batch_size
     print(f"Iterating on {chunks} chunks...")
@@ -97,10 +76,10 @@ def batched_generation(
             tokenizer,
             num_return_sequences=num_return_sequences,
             max_new_tokens=max_new_tokens,
-            top_p=top_p
+            top_p=top_p,
         )
         data = [{"prompt": p, "generations": c} for p, c in zip(chunk, continuations)]
         for d in data:
-            with output_file.open('a') as f:
+            with output_file.open("a") as f:
                 print(json.dumps(d), file=f)
             yield d
