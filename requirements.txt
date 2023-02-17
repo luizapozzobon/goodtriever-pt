@@ -13,7 +13,9 @@ asttokens==2.2.1
 async-timeout==3.0.1
     # via aiohttp
 attrs==22.2.0
-    # via aiohttp
+    # via
+    #   aiohttp
+    #   pytest
 backcall==0.2.0
     # via ipython
 black==22.12.0
@@ -40,6 +42,8 @@ decorator==5.1.1
     # via
     #   gcsfs
     #   ipython
+exceptiongroup==1.1.0
+    # via pytest
 executing==1.2.0
     # via stack-data
 filelock==3.9.0
@@ -96,6 +100,8 @@ importlib-metadata==6.0.0
     # via
     #   jupyter-client
     #   markdown
+iniconfig==2.0.0
+    # via pytest
 ipykernel==6.20.2
     # via ipywidgets
 ipython==8.8.0
@@ -165,6 +171,7 @@ packaging==23.0
     #   huggingface-hub
     #   ipykernel
     #   matplotlib
+    #   pytest
     #   transformers
 pandas==1.5.3
     # via
@@ -184,6 +191,8 @@ platformdirs==2.6.2
     # via
     #   black
     #   jupyter-core
+pluggy==1.0.0
+    # via pytest
 prompt-toolkit==3.0.36
     # via ipython
 protobuf==3.20.3
@@ -213,6 +222,8 @@ pygments==2.14.0
     # via ipython
 pyparsing==3.0.9
     # via matplotlib
+pytest==7.2.1
+    # via -r requirements.in
 python-dateutil==2.8.2
     # via
     #   jupyter-client
@@ -264,7 +275,9 @@ termcolor==2.2.0
 tokenizers==0.13.2
     # via transformers
 tomli==2.0.1
-    # via black
+    # via
+    #   black
+    #   pytest
 torch==1.13.1
     # via transformers
 tornado==6.2

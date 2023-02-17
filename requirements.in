@@ -16,3 +16,4 @@ fsspec
 gcsfs
 psutil
 joblib
+pytest
