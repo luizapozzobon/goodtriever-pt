@@ -12,59 +12,57 @@ import numpy as np
 import pandas as pd
 
 from utils.perspective_api import PerspectiveWorker
-from utils.utils import load_cache
+from utils.utils import load_cache, structure_output_filepath
 
 
 def main(
-    filename: str = "outputs/prompted_gpt2_generations.jsonl",
+    input_filename: str,
     column_name: str = "generations",
-    out_folder: str = "./outputs/",
-    out_file: Optional[str] = None,
+    output_folder: Optional[str] = None,
     perspective_rate_limit: str = 1,
 ) -> None:
     """Score sequences of text with PerspectiveAPI.
 
     Args:
-        filename (str, optional): jsonl file with generated text to be scored.
-            Defaults to "outputs/prompted_gpt2_generations.jsonl".
+        input_filename (str, optional): jsonl file with generated text to be scored.
+            Should be stored locally.
         column_name (str, optional): Name of the field where the text sequences are.
+            Supports any dict or list of dict column as long as the dict contains a
+            `text` keyword.
             Defaults to "generations".
-        out_folder (str, optional): Output folder. Defaults to "./outputs/".
+        output_folder (str, optional): Output folder. If None, results will be saved
+            to the same folder as `input_filename`. Defaults to None.
         perspective_rate_limit (str, optional): Maximum number of API calls per second.
             Defaults to 1.
 
     Raises:
-        ValueError: If `filename` does not exist.
-        ValueError: If `column_name` values are not lists.
+        NotImplementedError: If `column_name` values are not lists or dicts or don't
+            have a 'text' key.
     """
-    filename = Path(filename)
-    if not filename.exists():
-        raise ValueError(f"{filename} not found.")
+    input_filename = Path(input_filename)
+    if not input_filename.exists():
+        raise ValueError(f"{input_filename} not found.")
 
-    if out_file is None:
-        if "generations" in filename.stem:
-            out_file = f'{filename.stem.replace("generations", "perspective")}.jsonl'
-        else:
-            raise ValueError(
-                "`generations` keyword not found in the input file. Please define an output filename manually."
-            )
+    output_file = structure_output_filepath(
+        step="perspective",
+        output_folder=output_folder or input_filename.parent,
+        previous_filename=input_filename,
+    )
 
-    df = pd.read_json(filename, lines=True)
+    df = pd.read_json(input_filename, lines=True)
 
     if isinstance(df.iloc[0][column_name], dict):
         df[column_name] = df[column_name].apply(lambda x: [x.get("text")])
-    elif not isinstance(df.iloc[0][column_name], list):
-        raise NotImplementedError(
-            "This file currently supports lists or dicts in `column_name`."
-            "If dict, make sure there's a `text` key."
+    elif isinstance(df.iloc[0][column_name], list):
+        df[column_name] = df[column_name].apply(
+            lambda y: [x.get("text") if isinstance(x, dict) else x for x in y]
         )
-
-    out_file = Path(out_folder) / out_file
-    out_file.parent.mkdir(exist_ok=True, parents=True)
+    else:
+        raise NotImplementedError("If dict or list of dicts, make sure there's a `text` key.")
 
     num_samples = len(df.iloc[0][column_name])
     perspective = PerspectiveWorker(
-        out_file=out_file,
+        out_file=output_file,
         total=df.shape[0] * num_samples,
         rate_limit=perspective_rate_limit,
     )
@@ -73,13 +71,9 @@ def main(
     values = np.stack(df[column_name].values).reshape(-1).tolist()
     del df
 
-    # Load cached generations
-    num_cached_scores = 0
-    for scores in load_cache(out_file):
-        num_cached_scores += 1
-
-    # Remove prompts that have already been generated with
+    num_cached_scores = load_cache(output_file)
     values = values[num_cached_scores:]
+
     if len(values) == 0:
         print("No more samples to score.")
         perspective.stop()

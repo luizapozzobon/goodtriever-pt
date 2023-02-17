@@ -14,6 +14,7 @@ from tqdm import tqdm
 
 from utils.constants import PERSPECTIVE_API_ATTRIBUTES_LOWER
 from utils.perspective_api import unpack_scores
+from utils.utils import structure_output_filepath
 
 
 def make_generations_col(generations: List[str], responses: List[Dict]) -> Dict:
@@ -50,17 +51,21 @@ def main(
     generations_path: str,
     scores_path: str,
     prompts_path: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
-    output_folder: str = "./outputs/",
+    output_folder: Optional[str] = None,
     chunksize: int = int(1e5),
 ) -> None:
-    """Collate sequences with its PerspectiveAPI toxicity scores.
+    """Collate generations with its PerspectiveAPI toxicity scores and pre-scored prompts.
+
+    `prompts_path` points to a file that contains a `prompt` column with dict values.
+    These dictionaries are pre-scored prompts by PerspectiveAPI and their text.
 
     Args:
         generations_path (str): Path to generations file.
         scores_path (str): Path to scores file.
         prompts_path (str, optional): Path to prompts file.
             Defaults to "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl".
-        output_folder (str, optional): Output folder. Defaults to "./outputs/".
+        output_folder (str, optional): Output folder. If None, file will be saved to
+            `scores_path` folder. Defaults to None.
         chunksize (int): Chunksize to split large scores files by when loading
             with pandas. Default value chosen as a reasonable number that usually
             fits memory. Defaults to 100_000.
@@ -76,6 +81,7 @@ def main(
     # Flatten stacked generations to ease collate
     gen_list = gen_list.reshape(-1).tolist()
 
+    scores_path = Path(scores_path)
     scores = pd.read_json(scores_path, lines=True, chunksize=chunksize)
     scored_gens = pd.Series(dtype="object", name="generations")
     for i, chunk in enumerate(tqdm(scores, desc="Processing chunks", position=0)):
@@ -98,11 +104,11 @@ def main(
             f"Length of scored data is {len(scored_gens)}, but was expecting {len(generations)}"
         )
 
-    output_file = (
-        Path(output_folder)
-        / f'{Path(generations_path).stem.replace("generations", "collated")}.jsonl'
+    output_file = structure_output_filepath(
+        step="collate",
+        output_folder=output_folder or scores_path.parent,
+        previous_filename=scores_path.name,
     )
-    output_file.parent.mkdir(exist_ok=True, parents=True)
 
     if prompt_indexes is not None:
         prompts = pd.read_json(prompts_path, lines=True)

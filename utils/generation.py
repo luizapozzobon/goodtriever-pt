@@ -20,7 +20,8 @@ def generate(
     model: Callable,
     tokenizer: Callable,
     max_new_tokens: int,
-    num_return_sequences: int
+    num_return_sequences: int,
+    top_p: float
 ) -> np.array:
     """Generate sequences given a prompt.
 
@@ -30,6 +31,7 @@ def generate(
         tokenizer (Callable): HuggingFace tokenizer instance.
         max_new_tokens (int): Number of tokens to generate.
         num_return_sequences (int): Number of sequences to generate for each prompt.
+        top_p (float): top_p probability for nucleus sampling.
 
     Returns:
         np.array: Prompt continuations
@@ -67,22 +69,20 @@ def generate(
 
 
 def batched_generation(
+    output_file: str,
     prompts: pd.DataFrame,
     model_name: str,
     batch_size: int,
     num_return_sequences: int,
     max_new_tokens: int,
-    out_folder: str,
+    top_p: float,
     use_eos: bool = False
 ) -> Generator:
     """https://github.com/allenai/real-toxicity-prompts/blob/master/generation/generation.py#L61"""
 
-    out_file = Path(out_folder) / f'{"eos" if use_eos else "prompted"}_{model_name}_generations.jsonl'
-    out_file.parent.mkdir(parents=True, exist_ok=True)
-
     # Load cached generations
     num_cached_generations = 0
-    for generation in load_cache(out_file):
+    for generation in load_cache(output_file):
         yield generation
         num_cached_generations += 1
 
@@ -114,12 +114,13 @@ def batched_generation(
             tokenizer,
             num_return_sequences=num_return_sequences,
             max_new_tokens=max_new_tokens,
+            top_p=top_p
         )
         data = [
             {"prompt": p, "generations": c}
             for p, c in zip(prompts, continuations)
         ]
         for d in data:
-            with out_file.open('a') as f:
+            with output_file.open('a') as f:
                 print(json.dumps(d), file=f)
             yield d

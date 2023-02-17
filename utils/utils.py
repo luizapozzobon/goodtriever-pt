@@ -5,11 +5,68 @@ https://github.com/allenai/real-toxicity-prompts/blob/master/utils/utils.py
 """
 import json
 from pathlib import Path
-from typing import Iterable, List, TypeVar
+from typing import Iterable, List, Optional, TypeVar, Union
 
 from tqdm.auto import tqdm
 
 T = TypeVar("T")
+
+
+def structure_output_filepath(
+    step: str,
+    previous_filename: Union[Path, str],
+    output_folder: Optional[Path] = None,
+    mkdir: bool = True,
+):
+    """Structure output filename given a step, output folder and previous filename."""
+    if isinstance(previous_filename, str):
+        previous_filename = Path(previous_filename)
+
+    stem = previous_filename.stem
+
+    if output_folder is None:
+        output_folder = previous_filename.parent
+
+    if step == "generation":
+        output_file = f"{stem}_generations.jsonl"
+    elif step == "perspective":
+        if "generations" in stem:
+            output_file = f"{stem.replace('generations', 'perspective')}.jsonl"
+        else:
+            output_file = f"{stem}_perspective.jsonl"
+    elif step == "collate":
+        if "perspective" in stem in stem:
+            output_file = f"{stem.replace('perspective', 'collated')}.jsonl"
+        else:
+            output_file = f"{stem}_collated.jsonl"
+    else:
+        raise NotImplementedError(
+            f"Step {step} not implemented for automatic filename structuring."
+        )
+
+    output_file = output_folder / output_file
+
+    if mkdir:
+        output_file.parent.mkdir(exist_ok=True, parents=True)
+
+    print(f"Saving to {output_file}.")
+    return output_file
+
+
+def load_cache(file: Path) -> int:
+    """Load json file and return number of cached lines."""
+
+    def _load_cache(file: Path):
+        if file.exists():
+            with file.open() as f:
+                for line in tqdm(f, desc=f"Loading cache from {file}"):
+                    yield json.loads(line)
+
+    lines = 0
+    for _ in _load_cache(file):
+        lines += 1
+
+    return lines
 
 
 def batchify(data: Iterable[T], batch_size: int) -> Iterable[List[T]]:
@@ -28,11 +85,3 @@ def batchify(data: Iterable[T], batch_size: int) -> Iterable[List[T]]:
     # Yield last un-filled batch
     if len(batch) != 0:
         yield batch
-
-
-def load_cache(file: Path):
-    """Load json file cache."""
-    if file.exists():
-        with file.open() as f:
-            for line in tqdm(f, desc=f"Loading cache from {file}"):
-                yield json.loads(line)
