@@ -17,3 +17,10 @@ gcsfs
 psutil
 joblib
 pytest
+
+# kNN-LM
+torch>=1.9.0
+transformers
+datasets
+scipy
+faiss-gpu==1.7.2

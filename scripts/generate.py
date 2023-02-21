@@ -5,48 +5,46 @@ https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts
 """
 from pathlib import Path
 
-import fire
 import numpy as np
 import pandas as pd
+from transformers import HfArgumentParser
 
-from utils.generation import batched_generation
-from utils.utils import structure_output_filepath
+from generation.args import GenerationArguments, KNNArguments
+from generation.base import batched_generation
+from generation.models import setup_model, setup_tokenizer
+from utils.utils import load_cache, structure_output_filepath
 
 ALLOWED_MODELS = ["gpt2", "gpt2-medium"]
 
 
-def main(
-    output_folder,
-    model_name: str = "gpt2",
-    prompts_path: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
-    num_return_sequences: int = 25,
-    max_new_tokens: int = 20,
-    top_p: float = 0.90,
-    batch_size: int = 16,
-    use_eos: bool = False,
-) -> None:
-    """Generate sequences of text with HuggingFace models and output to a jsonl file.
+def build_filename(gen_args, knn_args) -> str:
+    """Build filename from user arguments."""
+    name = f'{"eos" if gen_args.use_eos else "prompted"}_{gen_args.model_name}'
+    if gen_args.use_eos:
+        name = "eos"
+    else:
+        name = "prompted"
 
-    Filename is constructed automatically with the pattern:
-        "eos_{model_name}_generations.jsonl"
-    when `use_eos` and
-        "prompted_{model_name}_generations.jsonl"
-    when generating from prompts.
+    name += f"_{gen_args.model_name}"
 
-    Args:
-        output_folder (str, optional): Folder to save results.
-        model_name (str, optional): Model to use from HuggingFace Hub.
-            Defaults to "gpt2".
-        prompts_path (str, optional): Prompts path.
-            Defaults to "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl".
-        num_return_sequences (int, optional): Number of sequences to return for each prompt.
-            Defaults to 25. If `use_eos`, hard-coded to 1.
-        max_new_tokens (int, optional): Number of tokens to generate. Defaults to 20.
-        top_p (float, optional): top p probability for nucleus sampling. Defaults to 0.90.
-        batch_size (int, optional): Tokenization and generation batch size. Defaults to 16.
-        use_eos (bool, optional): Whether to do an unprompted generation of not.
-            If True, ignores `prompts_path` prompts and generates 10k sequences from
-            an end of sequence token. Defaults to False.
+    if knn_args.knn:
+        name += "_knn"
+        name += f"_{str(knn_args.lmbda).replace('.','')}"
+        if knn_args.discourage_retrieved_nn:
+            name += "_non-toxic"
+        else:
+            name += "_toxic"
+    return name
+
+
+def main() -> None:
+    """Generate sequences of text with HuggingFace models.
+
+    By default, the kNN retrieval system is deactivated and generations
+    are performed with the base model as defined by `model_name`.
+    To check which arguments are available, type `python -m scripts.generate -h`
+
+    Further instructions can be found at the `knn_transformers` folder README.
 
     Raises:
         NotImplementedError: If `use_eos` is True and `model_name` does not have a
@@ -55,35 +53,55 @@ def main(
     Yields:
         np.array: Generated sequence array.
     """
-    if use_eos:
-        if model_name in ["gpt2", "gpt2-medium"]:
-            # 10k unprompted samples
-            df = np.repeat(pd.Series("<|endoftext|>"), 10_000)
+    parser = HfArgumentParser((GenerationArguments, KNNArguments))
+    gen_args, knn_args = parser.parse_args_into_dataclasses()
+
+    if gen_args.use_eos:
+        if gen_args.model_name in ["gpt2", "gpt2-medium"]:
+            df = np.repeat(pd.Series("<|endoftext|>", name="text"), gen_args.eos_samples)
+            df = df.to_frame().reset_index(drop=True)
         else:
             raise NotImplementedError(
-                f"{model_name} is not implemented. " f"Choose one from {', '.join(ALLOWED_MODELS)}"
+                f"{gen_args.model_name} is not implemented. "
+                f"Choose one from {', '.join(ALLOWED_MODELS)}"
             )
-        num_return_sequences = 1
+        gen_args.num_return_sequences = 1
 
     else:
-        df = pd.read_json(prompts_path, lines=True)
+        df = pd.read_json(gen_args.prompts_path, lines=True)
+        df = pd.json_normalize(df["prompt"])
 
-    output_file = f'{"eos" if use_eos else "prompted"}_{model_name}'
+    # Create base filename
+    if gen_args.output_filename is None:
+        gen_args.output_filename = build_filename(gen_args, knn_args)
+
     output_file = structure_output_filepath(
-        step="generation", output_folder=output_folder, previous_filename=output_file
+        step="generation",
+        output_folder=Path(gen_args.output_folder),
+        previous_filename=gen_args.output_filename,
     )
+
+    # Remove prompts that have already been generated
+    lines = load_cache(output_file)
+    df = df.iloc[lines:]
+    if df.empty:
+        return
+
+    tokenizer = setup_tokenizer(gen_args.model_name)
+    model = setup_model(gen_args.model_name, knn_args)
 
     yield from batched_generation(
         output_file,
         df,
-        model_name,
-        batch_size=batch_size,
-        num_return_sequences=num_return_sequences,
-        max_new_tokens=max_new_tokens,
-        top_p=top_p,
-        use_eos=use_eos,
+        model,
+        tokenizer,
+        batch_size=gen_args.batch_size,
+        num_return_sequences=gen_args.num_return_sequences,
+        max_new_tokens=gen_args.max_new_tokens,
+        top_p=gen_args.top_p,
     )
 
 
 if __name__ == "__main__":
-    fire.Fire(main)
+    for _ in main():
+        pass
