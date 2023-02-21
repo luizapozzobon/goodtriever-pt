@@ -39,6 +39,16 @@ def structure_output_filepath(
             output_file = f"{stem.replace('perspective', 'collated')}.jsonl"
         else:
             output_file = f"{stem}_collated.jsonl"
+    elif step == "toxicity":
+        if "collated" in stem in stem:
+            output_file = f"{stem.replace('collated', 'toxicity')}.csv"
+        else:
+            output_file = f"{stem}_toxicity.jsonl"
+    elif step == "perplexity":
+        if "collated" in stem in stem:
+            output_file = f"{stem.replace('collated', 'perplexity')}.csv"
+        else:
+            output_file = f"{stem}_perplexity.jsonl"
     else:
         raise NotImplementedError(
             f"Step {step} not implemented for automatic filename structuring."
