@@ -40,6 +40,12 @@ def build_filename(gen_args, knn_args) -> str:
 def main() -> None:
     """Generate sequences of text with HuggingFace models.
 
+    By default, the kNN retrieval system is deactivated and generations
+    are performed with the base model as defined by `model_name`.
+    To check which arguments are available, type `python -m scripts.generate -h`
+
+    Further instructions can be found at the `knn_transformers` folder README.
+
     Raises:
         NotImplementedError: If `use_eos` is True and `model_name` does not have a
         registered EOS token for unprompted generation.
