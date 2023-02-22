@@ -75,10 +75,16 @@ def main(
             Defaults to "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl".
         output_folder (str, optional): Output folder. If None, file will be saved to
             `scores_path` folder. Defaults to None.
-        chunksize (int): Chunksize to split large scores files by when loading
+        chunksize (int): Chunksize to split large scores files when loading
             with pandas. Default value chosen as a reasonable number that usually
             fits memory. Defaults to 100_000.
     """
+    scores_path = Path(scores_path)
+    output_file = structure_output_filepath(
+        step="collate",
+        output_folder=output_folder or scores_path.parent,
+        previous_filename=scores_path.name,
+    )
 
     if output_file.exists():
         print(f"Collated file {output_file} already exists. Returning.")
@@ -100,20 +106,12 @@ def main(
     prompts = pd.read_json(prompts_path, lines=True) if prompt_indexes is not None else None
 
     if prompts is not None and not generations.index.equals(prompts.index):
-        raise ValueError("Generations and Prompts indexes do not match.")
+        warnings.warn("Generations and Prompts indexes do not match.")
 
-    scores_path = Path(scores_path)
-    output_file = structure_output_filepath(
-        step="collate",
-        output_folder=output_folder or scores_path.parent,
-        previous_filename=scores_path.name,
-    )
     # TODO add a check to compare scores len to generations
     scores = pd.read_json(scores_path, lines=True, chunksize=chunksize)
     lines = 0
-    for i, chunk in enumerate(
-        tqdm(scores, desc="Collating chunks", position=0)
-    ):
+    for i, chunk in enumerate(tqdm(scores, desc="Collating chunks", position=0)):
         start = chunksize * i
         end = start + chunksize
         indexes = prompt_indexes[start:end] if prompt_indexes is not None else None

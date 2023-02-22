@@ -73,7 +73,7 @@ def main(parser: Optional = None) -> Iterable:
 
     else:
         df = pd.read_json(gen_args.prompts_path, lines=True)
-        if 'prompt' in df.columns:
+        if "prompt" in df.columns:
             df = pd.json_normalize(df["prompt"])
 
     # Create base filename
@@ -85,6 +85,8 @@ def main(parser: Optional = None) -> Iterable:
         output_folder=Path(gen_args.output_folder),
         previous_filename=gen_args.output_filename,
     )
+    # Update name
+    gen_args.output_filename = output_file.name
 
     # Save generation args
     args_filename = output_file.parent / (
