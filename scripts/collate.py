@@ -62,6 +62,7 @@ def main(
     prompts_path: str = "gs://cohere-dev/luiza/model-safety/outputs/rtp_rescore/rtp_prompts_rescored.jsonl",
     output_folder: Union[str, Path] = None,
     chunksize: int = int(1e5),
+    column_name: str = "generations",
 ) -> Union[str, Path]:
     """Collate generations with its PerspectiveAPI toxicity scores and pre-scored prompts.
 
@@ -78,6 +79,8 @@ def main(
         chunksize (int): Chunksize to split large scores files when loading
             with pandas. Default value chosen as a reasonable number that usually
             fits memory. Defaults to 100_000.
+        column_name (str): Column name where the generations or its text are located.
+            Defaults to "generations".
     """
     scores_path = Path(scores_path)
     output_file = structure_output_filepath(
@@ -91,8 +94,13 @@ def main(
         return output_file
 
     generations = pd.read_json(generations_path, lines=True)
-    gen_list = np.stack(generations["generations"])
-    num_gens = gen_list.shape[1]
+
+    if isinstance(generations[column_name].iloc[0], dict):
+        gen_list = np.stack(generations[column_name].apply(lambda x: x.get("text", "")))
+    else:
+        gen_list = np.stack(generations[column_name])
+
+    num_gens = 1 if len(gen_list.shape) == 1 else gen_list.shape[1]
     gen_list = gen_list.reshape(-1).tolist()
 
     if chunksize % num_gens != 0:

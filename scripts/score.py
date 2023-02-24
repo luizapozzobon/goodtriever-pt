@@ -62,6 +62,8 @@ def main(
         df[column_name] = df[column_name].apply(
             lambda y: [x.get("text") if isinstance(x, dict) else x for x in y]
         )
+    elif isinstance(df.iloc[0][column_name], str):
+        df[column_name] = df[column_name].apply(lambda x: [x])
     else:
         raise NotImplementedError("If dict or list of dicts, make sure there's a `text` key.")
 
