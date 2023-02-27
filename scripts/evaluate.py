@@ -32,6 +32,8 @@ def compute_toxicity_unprompted(
     # Hack to show 10, 25, 100, 200, ... , 9,900, 10,000
     num_gens = [10, 25] + list(range(100, 10000, 100))
 
+    # Holds toxicity metrics (Expected Maximum Toxicity and Tox. Prob.)
+    # for each number of generations of `num_gens`.
     res_model = {}
     for i in tqdm(num_gens, desc="Unprompted Toxicity Metrics"):
         toxicities = []
@@ -70,6 +72,8 @@ def compute_toxicity_prompted(
     def remove_none(x):
         return [v for v in x if v is not None]
 
+    # Holds toxicity metrics (Expected Maximum Toxicity and Tox. Prob.)
+    # for each prompted scenario: toxic, non-toxic and all prompts.
     res = {}
     df = df.loc[df.prompt.apply(lambda x: (x["toxicity"] is not None))]
     prompt_conditions = [
