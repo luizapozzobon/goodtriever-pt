@@ -25,18 +25,17 @@ import itertools
 import logging
 import math
 import os
-    
 import sys
 from dataclasses import dataclass, field
 from typing import Optional
 
-import torch
-
 import datasets
-from datasets import load_dataset
-from tqdm import tqdm
-
+import torch
 import transformers
+from datasets import load_dataset
+from knnlm import DIST, KEY_TYPE, KNNSaver, KNNWrapper
+from retomaton import RetomatonWrapper
+from tqdm import tqdm
 from transformers import (
     CONFIG_MAPPING,
     MODEL_FOR_CAUSAL_LM_MAPPING,
@@ -55,12 +54,11 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 
-from knnlm import KNNWrapper, KNNSaver, KEY_TYPE, DIST
-from retomaton import RetomatonWrapper
-
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.11.0.dev0")
-require_version("datasets>=1.8.0", "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt")
+require_version(
+    "datasets>=1.8.0", "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt"
+)
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +66,7 @@ MODEL_CONFIG_CLASSES = list(MODEL_FOR_CAUSAL_LM_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 padding_index = -100
+
 
 @dataclass
 class ModelArguments:
@@ -84,7 +83,10 @@ class ModelArguments:
     )
     model_type: Optional[str] = field(
         default=None,
-        metadata={"help": "If training from scratch, pass a model type from the list: " + ", ".join(MODEL_TYPES)},
+        metadata={
+            "help": "If training from scratch, pass a model type from the list: "
+            + ", ".join(MODEL_TYPES)
+        },
     )
     config_overrides: Optional[str] = field(
         default=None,
@@ -94,22 +96,30 @@ class ModelArguments:
         },
     )
     config_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained config name or path if not the same as model_name"}
+        default=None,
+        metadata={"help": "Pretrained config name or path if not the same as model_name"},
     )
     tokenizer_name: Optional[str] = field(
-        default=None, metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"}
+        default=None,
+        metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"},
     )
     cache_dir: Optional[str] = field(
         default=None,
-        metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
+        metadata={
+            "help": "Where do you want to store the pretrained models downloaded from huggingface.co"
+        },
     )
     use_fast_tokenizer: bool = field(
         default=True,
-        metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
+        metadata={
+            "help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."
+        },
     )
     model_revision: str = field(
         default="main",
-        metadata={"help": "The specific model version to use (can be a branch name, tag name or commit id)."},
+        metadata={
+            "help": "The specific model version to use (can be a branch name, tag name or commit id)."
+        },
     )
     use_auth_token: bool = field(
         default=False,
@@ -120,7 +130,9 @@ class ModelArguments:
     )
 
     def __post_init__(self):
-        if self.config_overrides is not None and (self.config_name is not None or self.model_name_or_path is not None):
+        if self.config_overrides is not None and (
+            self.config_name is not None or self.model_name_or_path is not None
+        ):
             raise ValueError(
                 "--config_overrides can't be used in combination with --config_name or --model_name_or_path"
             )
@@ -133,15 +145,23 @@ class DataTrainingArguments:
     """
 
     dataset_name: Optional[str] = field(
-        default=None, metadata={"help": "The name of the dataset to use (via the datasets library)."}
+        default=None,
+        metadata={"help": "The name of the dataset to use (via the datasets library)."},
     )
     dataset_config_name: Optional[str] = field(
-        default=None, metadata={"help": "The configuration name of the dataset to use (via the datasets library)."}
+        default=None,
+        metadata={
+            "help": "The configuration name of the dataset to use (via the datasets library)."
+        },
     )
-    train_file: Optional[str] = field(default=None, metadata={"help": "The input training data file (a text file)."})
+    train_file: Optional[str] = field(
+        default=None, metadata={"help": "The input training data file (a text file)."}
+    )
     validation_file: Optional[str] = field(
         default=None,
-        metadata={"help": "An optional input evaluation data file to evaluate the perplexity on (a text file)."},
+        metadata={
+            "help": "An optional input evaluation data file to evaluate the perplexity on (a text file)."
+        },
     )
     max_train_samples: Optional[int] = field(
         default=None,
@@ -183,11 +203,10 @@ class DataTrainingArguments:
         default=True, metadata={"help": "Whether to keep line breaks when using TXT files or not."}
     )
 
-    eval_subset: str = field(default='validation')
+    eval_subset: str = field(default="validation")
     stride: int = field(default=512)
     patience: int = field(default=None)
     prompt: str = field(default=None)
-
 
     def __post_init__(self):
         if self.dataset_name is None and self.train_file is None and self.validation_file is None:
@@ -195,16 +214,26 @@ class DataTrainingArguments:
         else:
             if self.train_file is not None:
                 extension = self.train_file.split(".")[-1]
-                assert extension in ["csv", "json", "txt"], "`train_file` should be a csv, a json or a txt file."
+                assert extension in [
+                    "csv",
+                    "json",
+                    "txt",
+                ], "`train_file` should be a csv, a json or a txt file."
             if self.validation_file is not None:
                 extension = self.validation_file.split(".")[-1]
-                assert extension in ["csv", "json", "txt"], "`validation_file` should be a csv, a json or a txt file."
+                assert extension in [
+                    "csv",
+                    "json",
+                    "txt",
+                ], "`validation_file` should be a csv, a json or a txt file."
+
 
 @dataclass
 class KNNArguments:
     """
     Arguments pertaining to which model/config/tokenizer we are going to fine-tune, or train from scratch.
     """
+
     knn: bool = field(default=False)
     knn_gpu: bool = field(default=True)
     dstore_size: int = field(default=None, metadata={"help": "The size of the dstore."})
@@ -217,6 +246,7 @@ class KNNArguments:
     knn_temp: float = field(default=1.0)
     # Args for building the faiss index:
     build_index: bool = field(default=False)
+    flat_index: bool = field(default=False)
     # faiss_index: str = field(default="checkpoints/index")
     ncentroids: int = field(default=4096)
     code_size: int = field(default=64)
@@ -236,16 +266,21 @@ class KNNArguments:
     sample_size: int = field(default=20000000)
     members: str = field(default=None)
 
+
 def main():
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments, KNNArguments))
+    parser = HfArgumentParser(
+        (ModelArguments, DataTrainingArguments, TrainingArguments, KNNArguments)
+    )
     if len(sys.argv) == 2 and sys.argv[1].endswith(".json"):
         # If we pass only one argument to the script and it's the path to a json file,
         # let's parse it to get our arguments.
-        model_args, data_args, training_args, knn_args = parser.parse_json_file(json_file=os.path.abspath(sys.argv[1]))
+        model_args, data_args, training_args, knn_args = parser.parse_json_file(
+            json_file=os.path.abspath(sys.argv[1])
+        )
     else:
         model_args, data_args, training_args, knn_args = parser.parse_args_into_dataclasses()
 
@@ -273,7 +308,11 @@ def main():
 
     # Detecting last checkpoint.
     last_checkpoint = None
-    if os.path.isdir(training_args.output_dir) and training_args.do_train and not training_args.overwrite_output_dir:
+    if (
+        os.path.isdir(training_args.output_dir)
+        and training_args.do_train
+        and not training_args.overwrite_output_dir
+    ):
         last_checkpoint = get_last_checkpoint(training_args.output_dir)
         if last_checkpoint is None and len(os.listdir(training_args.output_dir)) > 0:
             raise ValueError(
@@ -331,7 +370,9 @@ def main():
         if extension == "txt":
             extension = "text"
             dataset_args["keep_linebreaks"] = data_args.keep_linebreaks
-        raw_datasets = load_dataset(extension, data_files=data_files, cache_dir=model_args.cache_dir, **dataset_args)
+        raw_datasets = load_dataset(
+            extension, data_files=data_files, cache_dir=model_args.cache_dir, **dataset_args
+        )
         # If no validation data is there, validation_split_percentage will be used to divide the dataset.
         if "validation" not in raw_datasets.keys():
             raw_datasets["validation"] = load_dataset(
@@ -349,7 +390,7 @@ def main():
                 **dataset_args,
             )
 
-    if not (training_args.do_train or data_args.eval_subset == 'train'):
+    if not (training_args.do_train or data_args.eval_subset == "train"):
         # If not training and not evaluating on train, we do not need to process it
         del raw_datasets["train"]
 
@@ -387,7 +428,9 @@ def main():
     if model_args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(model_args.tokenizer_name, **tokenizer_kwargs)
     elif model_args.model_name_or_path:
-        tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path, **tokenizer_kwargs)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_args.model_name_or_path, **tokenizer_kwargs
+        )
     else:
         raise ValueError(
             "You are instantiating a new tokenizer from scratch. This is not supported by this script."
@@ -479,7 +522,6 @@ def main():
     #     result["labels"] = result["input_ids"].copy()
     #     return result
 
-
     def group_texts(examples):
         # Concatenate all texts.
         concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
@@ -498,21 +540,25 @@ def main():
             begin_loc = max(i + data_args.stride - block_size, 0)
             end_loc = min(i + data_args.stride, total_length)
             trg_len = end_loc - i
-            cur_input_ids = concatenated_examples['input_ids'][begin_loc:end_loc]
+            cur_input_ids = concatenated_examples["input_ids"][begin_loc:end_loc]
             cur_labels = list(cur_input_ids)
             cur_labels[:-trg_len] = [padding_index] * (len(cur_labels) - trg_len)
 
             if len(cur_input_ids) < block_size:
                 padding_size = block_size - len(cur_input_ids)
-                pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
+                pad_token_id = (
+                    tokenizer.pad_token_id
+                    if tokenizer.pad_token_id is not None
+                    else tokenizer.eos_token_id
+                )
                 cur_input_ids += [pad_token_id] * padding_size
                 cur_labels += [padding_index] * padding_size
-            
+
             input_ids.append(cur_input_ids)
             attention_mask.append([1] * len(cur_labels))
             labels.append(cur_labels)
 
-        result = {'input_ids': input_ids, 'labels': labels, 'attention_mask': attention_mask}
+        result = {"input_ids": input_ids, "labels": labels, "attention_mask": attention_mask}
         return result
 
     # Note that with `batched=True`, this map processes 1,000 texts together, so group_texts throws away a remainder
@@ -532,11 +578,11 @@ def main():
         )
 
     for split, data in lm_datasets.items():
-        total_eval_tokens = 0        
-        for chunk in data['labels']:
+        total_eval_tokens = 0
+        for chunk in data["labels"]:
             total_eval_tokens += len([x for x in chunk[1:] if x != padding_index])
-        logger.info(f'[{split}] Total eval tokens: {total_eval_tokens}')
-        if knn_args.dstore_size is None and split == 'train':
+        logger.info(f"[{split}] Total eval tokens: {total_eval_tokens}")
+        if knn_args.dstore_size is None and split == "train":
             knn_args.dstore_size = total_eval_tokens
 
     if training_args.do_train:
@@ -562,29 +608,57 @@ def main():
         tokenizer=tokenizer,
         # Data collator will default to DataCollatorWithPadding, so we change it.
         data_collator=default_data_collator,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=data_args.patience)] if data_args.patience is not None else None,
+        callbacks=[EarlyStoppingCallback(early_stopping_patience=data_args.patience)]
+        if data_args.patience is not None
+        else None,
     )
 
     if knn_args.retomaton or knn_args.cluster_dstore:
-        knn_wrapper = RetomatonWrapper(dstore_size=knn_args.dstore_size, dstore_dir=knn_args.dstore_dir, 
-            dimension=dimension, 
-            knn_sim_func=knn_args.knn_sim_func, knn_keytype=knn_args.knn_keytype,
-            no_load_keys=knn_args.no_load_keys, move_dstore_to_mem=knn_args.move_dstore_to_mem, knn_gpu=knn_args.knn_gpu,
+        knn_wrapper = RetomatonWrapper(
+            dstore_size=knn_args.dstore_size,
+            dstore_dir=knn_args.dstore_dir,
+            dimension=dimension,
+            knn_sim_func=knn_args.knn_sim_func,
+            knn_keytype=knn_args.knn_keytype,
+            no_load_keys=knn_args.no_load_keys,
+            move_dstore_to_mem=knn_args.move_dstore_to_mem,
+            knn_gpu=knn_args.knn_gpu,
             recompute_dists=knn_args.recompute_dists,
-            k=knn_args.k, lmbda=knn_args.lmbda, knn_temp=knn_args.knn_temp, probe=knn_args.probe,
-            no_pointer=knn_args.no_pointer, min_knns=knn_args.min_knns, max_knns=knn_args.max_knns,
-            members=knn_args.members)
+            k=knn_args.k,
+            lmbda=knn_args.lmbda,
+            knn_temp=knn_args.knn_temp,
+            probe=knn_args.probe,
+            no_pointer=knn_args.no_pointer,
+            min_knns=knn_args.min_knns,
+            max_knns=knn_args.max_knns,
+            members=knn_args.members,
+        )
     elif knn_args.knn:
-        knn_wrapper = KNNWrapper(dstore_size=knn_args.dstore_size, dstore_dir=knn_args.dstore_dir, 
-            dimension= dimension, 
-            knn_sim_func=knn_args.knn_sim_func, knn_keytype=knn_args.knn_keytype,
-            no_load_keys=knn_args.no_load_keys, move_dstore_to_mem=knn_args.move_dstore_to_mem, knn_gpu=knn_args.knn_gpu,
+        knn_wrapper = KNNWrapper(
+            dstore_size=knn_args.dstore_size,
+            dstore_dir=knn_args.dstore_dir,
+            dimension=dimension,
+            flat_index=knn_args.flat_index,
+            knn_sim_func=knn_args.knn_sim_func,
+            knn_keytype=knn_args.knn_keytype,
+            no_load_keys=knn_args.no_load_keys,
+            move_dstore_to_mem=knn_args.move_dstore_to_mem,
+            knn_gpu=knn_args.knn_gpu,
             recompute_dists=knn_args.recompute_dists,
-            k=knn_args.k, lmbda=knn_args.lmbda, knn_temp=knn_args.knn_temp, probe=knn_args.probe)
+            k=knn_args.k,
+            lmbda=knn_args.lmbda,
+            knn_temp=knn_args.knn_temp,
+            probe=knn_args.probe,
+        )
     elif knn_args.save_knnlm_dstore or knn_args.build_index:
-        knn_wrapper = KNNSaver(dstore_size=knn_args.dstore_size, dstore_dir=knn_args.dstore_dir, 
-            dimension=dimension, knn_keytype=knn_args.knn_keytype)
-    
+        knn_wrapper = KNNSaver(
+            dstore_size=knn_args.dstore_size,
+            dstore_dir=knn_args.dstore_dir,
+            dimension=dimension,
+            flat_index=knn_args.flat_index,
+            knn_keytype=knn_args.knn_keytype,
+        )
+
     if knn_wrapper is not None:
         knn_wrapper.break_into(model)
 
@@ -601,7 +675,9 @@ def main():
         metrics = train_result.metrics
 
         max_train_samples = (
-            data_args.max_train_samples if data_args.max_train_samples is not None else len(train_dataset)
+            data_args.max_train_samples
+            if data_args.max_train_samples is not None
+            else len(train_dataset)
         )
         metrics["train_samples"] = min(max_train_samples, len(train_dataset))
 
@@ -615,7 +691,11 @@ def main():
 
         metrics = trainer.evaluate()
 
-        max_eval_samples = data_args.max_eval_samples if data_args.max_eval_samples is not None else len(eval_dataset)
+        max_eval_samples = (
+            data_args.max_eval_samples
+            if data_args.max_eval_samples is not None
+            else len(eval_dataset)
+        )
         metrics["eval_samples"] = min(max_eval_samples, len(eval_dataset))
         try:
             perplexity = math.exp(metrics["eval_loss"])
@@ -629,18 +709,25 @@ def main():
 
         trainer.log_metrics("eval", metrics)
         trainer.save_metrics("eval", metrics)
-    
+
     if data_args.prompt is not None:
-        generated_ids = model.generate(tokenizer.encode(data_args.prompt, return_tensors='pt').to(training_args.device), num_beams=5, num_return_sequences=5, do_sample=True)
+        generated_ids = model.generate(
+            tokenizer.encode(data_args.prompt, return_tensors="pt").to(training_args.device),
+            num_beams=5,
+            num_return_sequences=5,
+            do_sample=True,
+        )
         for i, beam_output in enumerate(generated_ids):
-            logger.info(f'{i}: {tokenizer.decode(beam_output)}')
+            logger.info(f"{i}: {tokenizer.decode(beam_output)}")
 
     if knn_args.build_index:
         knn_wrapper.build_index()
 
     if knn_args.cluster_dstore:
-        knn_wrapper.cluster_dstore(num_clusters=knn_args.num_clusters, sample_size=knn_args.sample_size, model=model)
-    
+        knn_wrapper.cluster_dstore(
+            num_clusters=knn_args.num_clusters, sample_size=knn_args.sample_size, model=model
+        )
+
     if knn_wrapper is not None:
         knn_wrapper.break_out()
 

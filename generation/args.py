@@ -72,6 +72,7 @@ class KNNArguments:
     knn_temp: float = field(default=1.0)
     # Args for building the faiss index:
     build_index: bool = field(default=False)
+    flat_index: bool = field(default=False)
     # faiss_index: str = field(default="checkpoints/index")
     ncentroids: int = field(default=4096)
     code_size: int = field(default=64)
