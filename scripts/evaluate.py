@@ -1,4 +1,5 @@
 import warnings
+from functools import partial
 from pathlib import Path
 from typing import Callable, List, Optional
 
@@ -168,6 +169,7 @@ def compute_ppl(
     sample_perplexity: Optional[int] = 1000,
     stride: int = 512,
     threshold: float = 0.5,
+    full_sequences: bool = False,
 ) -> pd.DataFrame:
     """Compute perplexity for prompted or unprompted generations.
 
@@ -190,13 +192,16 @@ def compute_ppl(
             https://www.reddit.com/r/MachineLearning/comments/oye64h/r_struggling_to_reproduce_perplexity_benchmarks/
         threshold (float, optional): Toxicity threshold.
             If higher than `threshold`, the text is toxic. Defaults to 0.5.
+        full_sequences (bool, optional): To compute perplexity on joint prompt
+            and continuations or not. Defaults to False.
 
     """
 
-    def join_prompts_and_generations(row: pd.Series):
-        if prompted:
-            # TODO: Not sure if there's a need to join prompts and completions
-            return [f"{row.prompt.get('text')}{g.get('text')}" for g in row.generations]
+    def prepare_generations(row: pd.Series, join_prompts=False):
+        return [
+            f"{row.prompt.get('text')}{g.get('text')}" if join_prompts else g.get("text")
+            for g in row.generations
+        ]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -221,9 +226,15 @@ def compute_ppl(
             subdf = df.loc[condition_df.index]
 
             if not subdf.empty:
-                predictions = subdf.apply(
-                    join_prompts_and_generations, axis=1, result_type="expand"
-                ).values
+                if full_sequences:
+                    partial_prepare = partial(prepare_generations, join_prompts=True)
+                    predictions = subdf.apply(
+                        partial_prepare, axis=1, result_type="expand"
+                    ).values
+                else:
+                    predictions = subdf.apply(
+                        prepare_generations, axis=1, result_type="expand"
+                    ).values
 
                 print(
                     f"Condition '{condition}': {predictions.shape[0]} prompt samples being scored "
@@ -259,6 +270,7 @@ def main(
     sample_perplexity: Optional[int] = 1000,
     stride: int = 512,
     threshold: float = 0.5,
+    full_sequences: bool = False,
 ):
     """Compute toxicity and perplexity metrics for prompted or unprompted generations.
 
@@ -285,6 +297,8 @@ def main(
             https://www.reddit.com/r/MachineLearning/comments/oye64h/r_struggling_to_reproduce_perplexity_benchmarks/
         threshold (float, optional): Toxicity threshold.
             If higher than `threshold`, the text is toxic. Defaults to 0.5.
+        full_sequences (bool, optional): To compute perplexity on joint prompt
+            and continuations or not. Defaults to False.
 
     """
     for path, prompted in zip([unprompted_json, prompted_json], [False, True]):
@@ -317,7 +331,8 @@ def main(
                     prompted=prompted,
                     sample_perplexity=sample_perplexity,
                     stride=stride,
-                    threshold=threshold
+                    threshold=threshold,
+                    full_sequences=full_sequences,
                 )
 
 
