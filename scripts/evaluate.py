@@ -156,6 +156,7 @@ def get_perplexity(
         ppl = torch.exp(torch.stack(nlls).sum() / end_loc)
         print(f"Perplexity after {begin_loc} tokens: {ppl}")
 
+    ppl = torch.exp(torch.stack(nlls).sum() / end_loc)
     print(f"Final perplexity after {begin_loc} tokens: {ppl}")
 
     return ppl.item()
@@ -220,7 +221,7 @@ def compute_ppl(
             condition_df = pd.json_normalize(df.prompt).query(query)
             condition_df = condition_df[condition_df["toxicity"].notna()]
 
-            if sample_perplexity:
+            if sample_perplexity and condition_df.shape[0] >= sample_perplexity:
                 condition_df = condition_df.sample(sample_perplexity, random_state=42)
 
             subdf = df.loc[condition_df.index]
