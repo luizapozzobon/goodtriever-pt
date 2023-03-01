@@ -5,7 +5,7 @@ https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts
 """
 import warnings
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 import fire
 import numpy as np
@@ -43,17 +43,18 @@ def collate(
     if prompt_indexes is not None:
         dataset["prompt"] = prompt_indexes
         dataset = dataset.groupby("prompt").apply(lambda x: x.to_dict(orient="records"))
+        dataset.name = "generations"
 
     return dataset
 
 
 def main(
-    generations_path: str,
-    scores_path: str,
-    prompts_path: str = "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl",
-    output_folder: Optional[str] = None,
+    generations_path: Union[str, Path],
+    scores_path: Union[str, Path],
+    prompts_path: str = "gs://cohere-dev/luiza/model-safety/outputs/rtp_rescore/rtp_prompts_rescored.jsonl",
+    output_folder: Union[str, Path] = None,
     chunksize: int = int(1e5),
-) -> None:
+) -> Union[str, Path]:
     """Collate generations with its PerspectiveAPI toxicity scores and pre-scored prompts.
 
     `prompts_path` points to a file that contains a `prompt` column with dict values.
