@@ -3,9 +3,8 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
-import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import fire
 import numpy as np
@@ -25,7 +24,7 @@ def main(
     input_filename: str,
     column_name: str = "generations",
     output_folder: Optional[str] = None,
-    perspective_rate_limit: str = 1,
+    perspective_rate_limit: int = 1,
 ) -> None:
     """Score sequences of text with PerspectiveAPI.
 
@@ -38,7 +37,7 @@ def main(
             Defaults to "generations".
         output_folder (str, optional): Output folder. If None, results will be saved
             to the same folder as `input_filename`. Defaults to None.
-        perspective_rate_limit (str, optional): Maximum number of API calls per second.
+        perspective_rate_limit (int, optional): Maximum number of API calls per second.
             Defaults to 1.
 
     Raises:
@@ -83,12 +82,14 @@ def main(
     if len(values) == 0:
         print("No more samples to score.")
         perspective.stop()
-        sys.exit()
+        return output_file
 
     for i, text in enumerate(values):
         perspective(f"generation-{num_cached_scores + i}", text)
 
     perspective.stop()
+
+    return output_file
 
 
 if __name__ == "__main__":

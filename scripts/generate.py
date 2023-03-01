@@ -3,13 +3,14 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
+import json
 from pathlib import Path
+from typing import Iterable, Optional
 
 import numpy as np
 import pandas as pd
-from transformers import HfArgumentParser
 
-from generation.args import GenerationArguments, KNNArguments
+from generation.args import GenerationParser
 from generation.base import batched_generation
 from generation.models import setup_model, setup_tokenizer
 from utils.utils import load_cache, structure_output_filepath
@@ -37,7 +38,7 @@ def build_filename(gen_args, knn_args) -> str:
     return name
 
 
-def main() -> None:
+def main(parser: Optional = None) -> Iterable:
     """Generate sequences of text with HuggingFace models.
 
     By default, the kNN retrieval system is deactivated and generations
@@ -53,8 +54,11 @@ def main() -> None:
     Yields:
         np.array: Generated sequence array.
     """
-    parser = HfArgumentParser((GenerationArguments, KNNArguments))
-    gen_args, knn_args = parser.parse_args_into_dataclasses()
+
+    if parser is None:
+        parser = GenerationParser()
+
+    gen_args, knn_args = parser.gen_args, parser.knn_args
 
     if gen_args.use_eos:
         if gen_args.model_name in ["gpt2", "gpt2-medium"]:
@@ -69,7 +73,8 @@ def main() -> None:
 
     else:
         df = pd.read_json(gen_args.prompts_path, lines=True)
-        df = pd.json_normalize(df["prompt"])
+        if "prompt" in df.columns:
+            df = pd.json_normalize(df["prompt"])
 
     # Create base filename
     if gen_args.output_filename is None:
@@ -80,6 +85,15 @@ def main() -> None:
         output_folder=Path(gen_args.output_folder),
         previous_filename=gen_args.output_filename,
     )
+    # Update name
+    gen_args.output_filename = output_file.name
+
+    # Save generation args
+    args_filename = output_file.parent / (
+        "eos_args.json" if gen_args.use_eos else "prompted_args.json"
+    )
+    with open(args_filename, "w") as f:
+        f.write(json.dumps(parser.all_args, indent=2, default=str))
 
     # Remove prompts that have already been generated
     lines = load_cache(output_file)

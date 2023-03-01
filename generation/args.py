@@ -1,6 +1,23 @@
 from dataclasses import dataclass, field
 
+from transformers import HfArgumentParser
+
 from knn_transformers.knnlm import DIST, KEY_TYPE
+
+
+class GenerationParser:
+    """Handle arguments involved in the generation process (kNN-LM + generate.py script)."""
+    def __init__(self):
+        parser = HfArgumentParser((GenerationArguments, KNNArguments))
+        self.gen_args, self.knn_args, self.other_strings = parser.parse_args_into_dataclasses(
+            return_remaining_strings=True
+        )
+
+        self.all_args = {
+            "GenerationArguments": vars(self.gen_args),
+            "KNNArguments": vars(self.knn_args),
+            "OtherStrings": self.other_strings,
+        }
 
 
 @dataclass
