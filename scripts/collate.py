@@ -108,11 +108,10 @@ def main(
     if prompts is not None and not generations.index.equals(prompts.index):
         warnings.warn("Generations and Prompts indexes do not match.")
 
-    # TODO add a check to compare scores len to generations
     scores = pd.read_json(scores_path, lines=True, chunksize=chunksize)
     lines = 0
-    for i, chunk in enumerate(tqdm(scores, desc="Collating chunks", position=0)):
-        start = chunksize * i
+    for chunk_idx, chunk in enumerate(tqdm(scores, desc="Collating chunks", position=0)):
+        start = chunksize * chunk_idx
         end = start + chunksize
         indexes = prompt_indexes[start:end] if prompt_indexes is not None else None
 
