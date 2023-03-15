@@ -123,7 +123,11 @@ def main(
         end = start + chunksize
         indexes = prompt_indexes[start:end] if prompt_indexes is not None else None
 
-        scores_list = chunk["response"].tolist()
+        if "response" in chunk:
+            scores_list = chunk["response"].tolist()
+        elif "attributeScores" in chunk:
+            scores_list = chunk.to_dict(orient="records")
+
         scored_gens = collate(gen_list[start:end], scores_list, prompts, indexes)
 
         with open(output_file, "a") as f:
