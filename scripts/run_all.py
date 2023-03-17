@@ -1,7 +1,8 @@
-import time
+import gc
 from pathlib import Path
 
 import fire
+import torch
 
 from generation.args import GenerationParser
 from scripts.collate import main as collate
@@ -11,7 +12,7 @@ from scripts.score import main as score
 
 
 def main(
-    perspective_rate_limit: int = 110,
+    perspective_rate_limit: int = 90,
     perplexity_model: str = "gpt2-medium",
     collate_chunksize: int = int(1e5),
     sample_perplexity: int = 1000,
@@ -45,10 +46,12 @@ def main(
     for _ in generate(parser):
         pass
 
+    # To avoid faiss error: "Failed to cudaFree pointer"
+    torch.cuda.empty_cache()
+    gc.collect()
+
     output_folder = Path(parser.gen_args.output_folder)
     generations_path = str(output_folder / parser.gen_args.output_filename)
-
-    time.sleep(2)
 
     scores_path = score(
         input_filename=generations_path,
