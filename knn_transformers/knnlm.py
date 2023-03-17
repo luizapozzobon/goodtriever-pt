@@ -110,7 +110,9 @@ class KNNWrapper(object):
         if self.knn_gpu:
             start = time.time()
             co = faiss.GpuClonerOptions()
-            co.useFloat16 = True
+            if not self.flat_index:
+                # This causes memory errors on large flat indexes
+                co.useFloat16 = True
             gpu_index = faiss.index_cpu_to_gpu(faiss.StandardGpuResources(), 0, cpu_index, co)
             logger.info(f"Moving index to GPU took {time.time() - start} s")
         else:
@@ -494,6 +496,7 @@ class KNNSaver(object):
         # Flat index may be used to debug retrieved results.
         # It returns a 100% accurate nearest neighbor search, while quantized
         # index are (faster, but often inaccurate) approximations of those.
+        # https://github.com/facebookresearch/faiss/wiki/Pre--and-post-processing#the-indexidmap
         if self.flat_index:
             index = faiss.IndexFlatL2(self.dimension)
         else:
