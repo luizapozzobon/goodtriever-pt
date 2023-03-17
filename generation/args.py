@@ -72,6 +72,8 @@ class KNNArguments:
     knn_temp: float = field(default=1.0)
     # Args for building the faiss index:
     build_index: bool = field(default=False)
+    # To use flat index instead of quantized index in Faiss, set to True
+    # Flat index is slower but returns 100% accurate nearest neighbor results
     flat_index: bool = field(default=False)
     # faiss_index: str = field(default="checkpoints/index")
     ncentroids: int = field(default=4096)

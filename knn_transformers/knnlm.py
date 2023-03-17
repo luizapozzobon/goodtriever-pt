@@ -491,6 +491,9 @@ class KNNSaver(object):
             self.flat_index,
         )
 
+        # Flat index may be used to debug retrieved results.
+        # It returns a 100% accurate nearest neighbor search, while quantized
+        # index are (faster, but often inaccurate) approximations of those.
         if self.flat_index:
             index = faiss.IndexFlatL2(self.dimension)
         else:
