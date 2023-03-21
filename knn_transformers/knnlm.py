@@ -44,6 +44,7 @@ class KNNWrapper(object):
         dstore_size,
         dstore_dir,
         dimension,
+        flat_index=False,
         knn_sim_func=None,
         knn_keytype=None,
         no_load_keys=False,
@@ -59,6 +60,7 @@ class KNNWrapper(object):
         self.dstore_size = dstore_size
         self.dstore_dir = dstore_dir
         self.dimension = dimension
+        self.flat_index = flat_index
         self.lmbda = lmbda
         self.k = k
         self.knn_temperature = knn_temp
@@ -95,7 +97,11 @@ class KNNWrapper(object):
 
         start = time.time()
         index_name = get_index_path(
-            self.dstore_dir, self.model.config.model_type, self.dstore_size, self.dimension
+            self.dstore_dir,
+            self.model.config.model_type,
+            self.dstore_size,
+            self.dimension,
+            self.flat_index,
         )
         cpu_index = faiss.read_index(index_name, faiss.IO_FLAG_ONDISK_SAME_DIR)
         logger.info(f"Reading datastore took {time.time() - start} s")
@@ -104,7 +110,9 @@ class KNNWrapper(object):
         if self.knn_gpu:
             start = time.time()
             co = faiss.GpuClonerOptions()
-            co.useFloat16 = True
+            if not self.flat_index:
+                # This causes memory errors on large flat indexes
+                co.useFloat16 = True
             gpu_index = faiss.index_cpu_to_gpu(faiss.StandardGpuResources(), 0, cpu_index, co)
             logger.info(f"Moving index to GPU took {time.time() - start} s")
         else:
@@ -114,7 +122,8 @@ class KNNWrapper(object):
         # and reconstructing key vectors given their ids
         # currently, this is implemented only for CPU indexes:
         # https://github.com/facebookresearch/faiss/issues/2181
-        cpu_index.make_direct_map()
+        if not self.flat_index:
+            cpu_index.make_direct_map()
 
         keys_vals_prefix = get_dstore_path(
             self.dstore_dir, self.model.config.model_type, self.dstore_size, self.dimension
@@ -344,10 +353,11 @@ class KNNWrapper(object):
 
 
 class KNNSaver(object):
-    def __init__(self, dstore_size, dstore_dir, dimension, knn_keytype=None):
+    def __init__(self, dstore_size, dstore_dir, dimension, knn_keytype=None, flat_index=False):
         self.dstore_size = dstore_size
         self.dstore_dir = dstore_dir
         self.dimension = dimension
+        self.flat_index = flat_index
         self.knn_keytype = KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -467,29 +477,45 @@ class KNNSaver(object):
             self.model.broken_into = None
 
     def build_index(
-        self, num_keys_to_add_at_a_time=1000000, ncentroids=4096, seed=1, code_size=64, probe=32
+        self,
+        num_keys_to_add_at_a_time=1000000,
+        ncentroids=4096,
+        seed=1,
+        code_size=64,
+        probe=32,
     ):
         logger.info("Building index")
         index_name = get_index_path(
-            self.dstore_dir, self.model.config.model_type, self.dstore_size, self.dimension
+            self.dstore_dir,
+            self.model.config.model_type,
+            self.dstore_size,
+            self.dimension,
+            self.flat_index,
         )
 
-        # Initialize faiss index
-        quantizer = faiss.IndexFlatL2(self.dimension)
-        index = faiss.IndexIVFPQ(quantizer, self.dimension, ncentroids, code_size, 8)
-        index.nprobe = probe
+        # Flat index may be used to debug retrieved results.
+        # It returns a 100% accurate nearest neighbor search, while quantized
+        # index are (faster, but often inaccurate) approximations of those.
+        # https://github.com/facebookresearch/faiss/wiki/Pre--and-post-processing#the-indexidmap
+        if self.flat_index:
+            index = faiss.IndexFlatL2(self.dimension)
+        else:
+            # Initialize faiss index
+            quantizer = faiss.IndexFlatL2(self.dimension)
+            index = faiss.IndexIVFPQ(quantizer, self.dimension, ncentroids, code_size, 8)
+            index.nprobe = probe
 
-        logger.info("Training Index")
-        np.random.seed(seed)
-        random_sample = np.random.choice(
-            np.arange(self.dstore_vals.shape[0]),
-            size=[min(1000000, self.dstore_vals.shape[0])],
-            replace=False,
-        )
-        start = time.time()
-        # Faiss does not handle adding keys in fp16 as of writing this.
-        index.train(self.dstore_keys[random_sample].astype(np.float32))
-        logger.info(f"Training took {time.time() - start} s")
+            logger.info("Training Index")
+            np.random.seed(seed)
+            random_sample = np.random.choice(
+                np.arange(self.dstore_vals.shape[0]),
+                size=[min(1000000, self.dstore_vals.shape[0])],
+                replace=False,
+            )
+            start = time.time()
+            # Faiss does not handle adding keys in fp16 as of writing this.
+            index.train(self.dstore_keys[random_sample].astype(np.float32))
+            logger.info(f"Training took {time.time() - start} s")
 
         logger.info("Adding Keys")
         # index = faiss.read_index(f'{index_name}.trained')
@@ -498,7 +524,12 @@ class KNNSaver(object):
         while start < self.dstore_size:
             end = min(self.dstore_size, start + num_keys_to_add_at_a_time)
             to_add = self.dstore_keys[start:end].copy()
-            index.add_with_ids(torch.tensor(to_add.astype(np.float32)), torch.arange(start, end))
+            if self.flat_index:
+                index.add(torch.tensor(to_add.astype(np.float32)))
+            else:
+                index.add_with_ids(
+                    torch.tensor(to_add.astype(np.float32)), torch.arange(start, end)
+                )
             start += num_keys_to_add_at_a_time
 
             if (start % 1000000) == 0:
@@ -536,5 +567,5 @@ def get_dstore_path(dstore_dir, model_type, dstore_size, dimension):
     return f"{dstore_dir}/dstore_{model_type}_{dstore_size}_{dimension}"
 
 
-def get_index_path(dstore_dir, model_type, dstore_size, dimension):
-    return f"{dstore_dir}/index_{model_type}_{dstore_size}_{dimension}.indexed"
+def get_index_path(dstore_dir, model_type, dstore_size, dimension, flat_index):
+    return f"{dstore_dir}/index_{model_type}_{dstore_size}_{dimension}{'_flat' if flat_index else ''}.indexed"

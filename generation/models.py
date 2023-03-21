@@ -24,6 +24,7 @@ def setup_model(model_name: str, knn_args):
             dstore_size=knn_args.dstore_size,
             dstore_dir=knn_args.dstore_dir,
             dimension=dimension,
+            flat_index=knn_args.flat_index,
             knn_sim_func=knn_args.knn_sim_func,
             knn_keytype=knn_args.knn_keytype,
             no_load_keys=knn_args.no_load_keys,
