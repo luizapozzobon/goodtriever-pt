@@ -17,6 +17,8 @@ gcsfs
 psutil
 joblib
 pytest
+nomic
+wordcloud
 
 # kNN-LM
 torch>=1.9.0
