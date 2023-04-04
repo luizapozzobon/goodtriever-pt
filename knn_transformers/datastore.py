@@ -71,7 +71,7 @@ class Datastore:
         dists, knns = dists.to(self.device), knns.to(self.device)
 
         if recompute_dists:
-            knns_vecs = torch.from_numpy(self.keys[knns]).to(self.device)
+            knns_vecs = torch.from_numpy(self.keys[knns.cpu().numpy()]).to(self.device)
             dists = self.dist_func(queries, knns_vecs)
         return dists, knns
 
