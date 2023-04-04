@@ -1,4 +1,5 @@
 import logging
+import warnings
 from enum import Enum, auto
 
 import numpy as np
@@ -26,6 +27,7 @@ class KEY_TYPE(Enum):
 class METHODS(Enum):
     interpolate = auto()
     interpolate_discourage = auto()
+    ensemble = auto()
 
     @staticmethod
     def from_string(s):
@@ -52,8 +54,10 @@ class KNNWrapper(object):
         knn_temp=1.0,
         probe=32,
         method="interpolate",
+        other_dstore_dir=None,
     ):
         self.dstore_dir = dstore_dir
+        self.other_dstore_dir = other_dstore_dir
         self.dimension = dimension
         self.flat_index = flat_index
         self.lmbda = lmbda
@@ -80,9 +84,17 @@ class KNNWrapper(object):
         method_to_method_func = {
             METHODS.interpolate: KNNWrapper.interpolate,
             METHODS.interpolate_discourage: KNNWrapper.interpolate_discourage,
+            METHODS.ensemble: KNNWrapper.ensemble,
         }
         self.method = method
         self.method_func = method_to_method_func[self.method]
+
+        if self.method == METHODS.ensemble:
+            warnings.warn(
+                "`dstore_dir` should point to datastore that will be subtracted. "
+                "`other_dstore_dir` should point to datastore that will be added. "
+                "If `other_dstore_dir` is left empty, base language model logits will be used."
+            )
 
     def setup_datastore(self):
         self.datastore = Datastore(
@@ -96,6 +108,19 @@ class KNNWrapper(object):
             move_dstore_to_mem=self.move_dstore_to_mem,
             flat_index=self.flat_index,
         ).setup_faiss()
+
+        if self.other_dstore_dir is not None:
+            self.other_datastore = Datastore(
+                dstore_dir=self.other_dstore_dir,
+                dimension=self.dimension,
+                model_type=self.model.config.model_type,
+                device=self.device,
+                knn_gpu=self.knn_gpu,
+                knn_sim_func=self.knn_sim_func,
+                knn_temperature=self.knn_temperature,
+                move_dstore_to_mem=self.move_dstore_to_mem,
+                flat_index=self.flat_index,
+            ).setup_faiss()
 
     def break_into(self, model):
         self.model = model
@@ -166,8 +191,22 @@ class KNNWrapper(object):
         neg_dists = -dists
         knn_log_probs, _ = self.datastore.knns_to_log_prob(knns, neg_dists)
 
+        if self.other_datastore is not None:
+            if self.method == METHODS.ensemble:
+                dists, knns = self.other_datastore.get_knns(queries)  # (nonpad batch * time, k)
+                neg_dists = -dists
+                other_knn_log_probs, _ = self.other_datastore.knns_to_log_prob(knns, neg_dists)
+
+                knn_log_probs = (knn_log_probs, other_knn_log_probs)
+            else:
+                raise NotImplementedError(
+                    f"Other datastore is not supported for method {self.method}."
+                )
+        else:
+            knn_log_probs = (knn_log_probs,)
+
         interpolated_scores = self.method_func(
-            knn_log_probs, lm_logits, self.lmbda
+            lm_logits, *knn_log_probs, lmbda=self.lmbda
         )  # (nonpad, vocab)
 
         return interpolated_scores
@@ -189,16 +228,34 @@ class KNNWrapper(object):
         return {}
 
     @staticmethod
-    def interpolate(knn_log_probs, lm_log_probs, lmbda):
+    def interpolate(lm_log_probs, knn_log_probs, lmbda):
         return torch.logaddexp(lm_log_probs + np.log(1 - lmbda), knn_log_probs + np.log(lmbda))
 
     @staticmethod
-    def interpolate_discourage(knn_log_probs, lm_log_probs, lmbda):
+    def interpolate_discourage(lm_log_probs, knn_log_probs, lmbda):
         return torch.log(
             torch.nn.functional.relu(
                 torch.exp(np.log(1 + lmbda) + lm_log_probs)
                 - torch.exp(np.log(lmbda) + knn_log_probs)
             )
+        )
+
+    @staticmethod
+    def ensemble(lm_log_probs, *knn_log_probs, lmbda=2.0):
+        def patch_log_probs(p):
+            if not p:
+                return lm_log_probs
+            return torch.nan_to_num(p, neginf=p[p != -np.inf].min() * 1.001)
+
+        assert isinstance(knn_log_probs, tuple)
+
+        knn_log_probs_subtract, knn_log_probs_sum = knn_log_probs
+        knn_log_probs_subtract = patch_log_probs(knn_log_probs_subtract)
+        knn_log_probs_sum = patch_log_probs(knn_log_probs_sum)
+
+        return torch.nn.functional.log_softmax(
+            lm_log_probs + torch.tensor(lmbda) * (knn_log_probs_sum - knn_log_probs_subtract),
+            dim=-1,
         )
 
     @staticmethod
