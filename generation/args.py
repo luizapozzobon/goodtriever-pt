@@ -83,7 +83,7 @@ class KNNArguments:
     move_dstore_to_mem: bool = field(default=True)
     no_load_keys: bool = field(default=True)
     recompute_dists: bool = field(default=False)
-    discourage_retrieved_nn: bool = field(default=False)
+    method: str = field(default=False)
 
     ## RetoMaton args:
     retomaton: bool = field(default=False)
