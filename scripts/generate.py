@@ -31,10 +31,7 @@ def build_filename(gen_args, knn_args) -> str:
     if knn_args.knn:
         name += "_knn"
         name += f"_{str(knn_args.lmbda).replace('.','')}"
-        if knn_args.discourage_retrieved_nn:
-            name += "_non-toxic"
-        else:
-            name += "_toxic"
+        name += f"_{knn_args.method}"
     return name
 
 

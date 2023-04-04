@@ -21,8 +21,8 @@ def setup_model(model_name: str, knn_args):
 
     if knn_args.knn:
         knn_wrapper = KNNWrapper(
-            dstore_size=knn_args.dstore_size,
             dstore_dir=knn_args.dstore_dir,
+            other_dstore_dir=knn_args.other_dstore_dir,
             dimension=dimension,
             flat_index=knn_args.flat_index,
             knn_sim_func=knn_args.knn_sim_func,
@@ -35,7 +35,7 @@ def setup_model(model_name: str, knn_args):
             lmbda=knn_args.lmbda,
             knn_temp=knn_args.knn_temp,
             probe=knn_args.probe,
-            discourage_retrieved_nn=knn_args.discourage_retrieved_nn
+            method=knn_args.method
         )
 
     if knn_wrapper is not None:

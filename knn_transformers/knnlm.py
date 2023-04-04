@@ -86,11 +86,11 @@ class KNNWrapper(object):
             METHODS.interpolate_discourage: KNNWrapper.interpolate_discourage,
             METHODS.ensemble: KNNWrapper.ensemble,
         }
-        self.method = method
+        self.method = METHODS.from_string(method)
         self.method_func = method_to_method_func[self.method]
 
         if self.method == METHODS.ensemble:
-            warnings.warn(
+            logger.info(
                 "`dstore_dir` should point to datastore that will be subtracted. "
                 "`other_dstore_dir` should point to datastore that will be added. "
                 "If `other_dstore_dir` is left empty, base language model logits will be used."
@@ -104,11 +104,13 @@ class KNNWrapper(object):
             device=self.device,
             knn_gpu=self.knn_gpu,
             knn_sim_func=self.knn_sim_func,
-            knn_temperature=self.knn_temperature,
             move_dstore_to_mem=self.move_dstore_to_mem,
+            probe=self.probe,
+            no_load_keys=self.no_load_keys,
             flat_index=self.flat_index,
         ).setup_faiss()
 
+        self.other_datastore = None
         if self.other_dstore_dir is not None:
             self.other_datastore = Datastore(
                 dstore_dir=self.other_dstore_dir,
@@ -117,10 +119,12 @@ class KNNWrapper(object):
                 device=self.device,
                 knn_gpu=self.knn_gpu,
                 knn_sim_func=self.knn_sim_func,
-                knn_temperature=self.knn_temperature,
                 move_dstore_to_mem=self.move_dstore_to_mem,
+                probe=self.probe,
+                no_load_keys=self.no_load_keys,
                 flat_index=self.flat_index,
             ).setup_faiss()
+            logger.info("Using `other_dstore_dir`.")
 
     def break_into(self, model):
         self.model = model
@@ -181,21 +185,35 @@ class KNNWrapper(object):
         lm_logits = lm_logits[nonpad_mask]
         queries = queries[nonpad_mask]  # (nonpad, dim)
 
-        new_scores = self.modify_probabilities()
+        new_scores = self.modify_probabilities(lm_logits, queries)
         output[nonpad_mask] = new_scores
 
         return output
 
     def modify_probabilities(self, lm_logits, queries):
-        dists, knns = self.datastore.get_knns(queries)  # (nonpad batch * time, k)
+        dists, knns = self.datastore.get_knns(
+            queries, k=self.k, recompute_dists=self.recompute_dists
+        )  # (nonpad batch * time, k)
         neg_dists = -dists
-        knn_log_probs, _ = self.datastore.knns_to_log_prob(knns, neg_dists)
+        knn_log_probs, _ = self.datastore.knns_to_log_prob(
+            knns,
+            neg_dists,
+            self.vocab_size,
+            knn_temperature=self.knn_temperature,
+        )
 
         if self.other_datastore is not None:
             if self.method == METHODS.ensemble:
-                dists, knns = self.other_datastore.get_knns(queries)  # (nonpad batch * time, k)
+                dists, knns = self.other_datastore.get_knns(
+                    queries, k=self.k, recompute_dists=self.recompute_dists
+                )  # (nonpad batch * time, k)
                 neg_dists = -dists
-                other_knn_log_probs, _ = self.other_datastore.knns_to_log_prob(knns, neg_dists)
+                other_knn_log_probs, _ = self.other_datastore.knns_to_log_prob(
+                    knns,
+                    neg_dists,
+                    self.vocab_size,
+                    knn_temperature=self.knn_temperature,
+                )
 
                 knn_log_probs = (knn_log_probs, other_knn_log_probs)
             else:
@@ -243,13 +261,16 @@ class KNNWrapper(object):
     @staticmethod
     def ensemble(lm_log_probs, *knn_log_probs, lmbda=2.0):
         def patch_log_probs(p):
-            if not p:
-                return lm_log_probs
             return torch.nan_to_num(p, neginf=p[p != -np.inf].min() * 1.001)
 
         assert isinstance(knn_log_probs, tuple)
+        assert isinstance(knn_log_probs[0], torch.Tensor)
 
+        # Use the lm log probs as the second set of knn log probs if only one set is provided.
+        if len(knn_log_probs) < 2:
+            knn_log_probs = (knn_log_probs[0], lm_log_probs)
         knn_log_probs_subtract, knn_log_probs_sum = knn_log_probs
+
         knn_log_probs_subtract = patch_log_probs(knn_log_probs_subtract)
         knn_log_probs_sum = patch_log_probs(knn_log_probs_sum)
 

@@ -66,6 +66,7 @@ class KNNArguments:
     knn_keytype: KEY_TYPE.from_string = field(default=KEY_TYPE.last_ffn_input)
     save_knnlm_dstore: bool = field(default=False)
     dstore_dir: str = field(default="knn_transformers/checkpoints")
+    other_dstore_dir: str = field(default=None)
     knn_sim_func: DIST.from_string = field(default=DIST.l2)
     lmbda: float = field(default=0.25)
     k: int = field(default=1024)
@@ -83,7 +84,7 @@ class KNNArguments:
     move_dstore_to_mem: bool = field(default=True)
     no_load_keys: bool = field(default=True)
     recompute_dists: bool = field(default=False)
-    method: str = field(default=False)
+    method: str = field(default='interpolation')
 
     ## RetoMaton args:
     retomaton: bool = field(default=False)

@@ -35,8 +35,9 @@ class Datastore:
         device,
         knn_gpu=False,
         knn_sim_func=DIST.l2,
-        knn_temperature=1.0,
         move_dstore_to_mem=False,
+        probe=32,
+        no_load_keys=False,
         dstore_size=None,
         flat_index=False,
     ):
@@ -47,9 +48,9 @@ class Datastore:
 
         self.knn_gpu = knn_gpu
         self.knn_sim_func = knn_sim_func
-        self.knn_temperature = knn_temperature
         self.move_dstore_to_mem = move_dstore_to_mem
-
+        self.probe = probe
+        self.no_load_keys = no_load_keys
         self.dstore_size = dstore_size or self.get_dstore_size()
         self.flat_index = flat_index
 
@@ -63,10 +64,10 @@ class Datastore:
         }
         self.dist_func = dist_type_to_dist_func[knn_sim_func]  # l2 or dot product function
 
-    def get_knns(self, queries, recompute_dists=False):
+    def get_knns(self, queries, k=1024, recompute_dists=False):
         if not self.knn_gpu:
             queries = queries.cpu()
-        dists, knns = self.index.search(queries, self.k)
+        dists, knns = self.index.search(queries, k)
         dists, knns = dists.to(self.device), knns.to(self.device)
 
         if recompute_dists:
@@ -74,11 +75,11 @@ class Datastore:
             dists = self.dist_func(queries, knns_vecs)
         return dists, knns
 
-    def knns_to_log_prob(self, knns, neg_dists):
-        probs = torch.nn.functional.softmax(neg_dists / self.knn_temperature, dim=-1)
+    def knns_to_log_prob(self, knns, neg_dists, vocab_size, knn_temperature=1.0):
+        probs = torch.nn.functional.softmax(neg_dists / knn_temperature, dim=-1)
         vals_at_knns = self.vals[knns].squeeze(-1)  # (nonpad batch * time, k)
         knn_log_probs = (
-            torch.full(size=(vals_at_knns.shape[:-1] + (self.vocab_size,)), fill_value=0.0)
+            torch.full(size=(vals_at_knns.shape[:-1] + (vocab_size,)), fill_value=0.0)
             .to(self.device)
             .scatter_add(dim=-1, index=vals_at_knns, src=probs)
             .log()
@@ -106,6 +107,7 @@ class Datastore:
 
         start = time.time()
         index_name = self.get_index_path()
+
         cpu_index = faiss.read_index(index_name, faiss.IO_FLAG_ONDISK_SAME_DIR)
         logger.info(f"Reading datastore took {time.time() - start} s")
         cpu_index.nprobe = self.probe
@@ -251,7 +253,10 @@ class Datastore:
         return self
 
     def get_dstore_size(self):
-        strings = list(Path(self.dstore_dir).glob("dstore_*"))
+        if not Path(self.dstore_dir).exists():
+            raise ValueError(f"dstore_dir {self.dstore_dir} does not exist.")
+
+        strings = [str(p) for p in Path(self.dstore_dir).glob("dstore_*")]
 
         if len(strings) != 2:
             raise ValueError(
@@ -261,8 +266,7 @@ class Datastore:
 
         pattern = r"(?<=_)\d+(?=_)"
         matches = re.findall(pattern, strings[0])
-        assert len(matches) == 1
-        return int(matches[0])
+        return int(matches[0])  # first match is the dstore size, second is the dimension
 
     def get_dstore_path(self):
         return f"{self.dstore_dir}/dstore_{self.model_type}_{self.dstore_size}_{self.dimension}"
