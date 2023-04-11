@@ -88,11 +88,12 @@ class KNNWrapper(object):
         }
         self.method = METHODS.from_string(method)
         self.method_func = method_to_method_func[self.method]
+        self.ds_ensemble_order = ("subtract", "add")
 
         if self.method == METHODS.ensemble:
             logger.info(
-                "`dstore_dir` should point to datastore that will be subtracted. "
-                "`other_dstore_dir` should point to datastore that will be added. "
+                f"`dstore_dir` should point to datastore that will be {self.ds_ensemble_order[0]}ed. "
+                f"`other_dstore_dir` should point to datastore that will be {self.ds_ensemble_order[1]}ed. "
                 "If `other_dstore_dir` is left empty, base language model logits will be used."
             )
 
@@ -224,7 +225,7 @@ class KNNWrapper(object):
             knn_log_probs = (knn_log_probs,)
 
         interpolated_scores = self.method_func(
-            lm_logits, *knn_log_probs, lmbda=self.lmbda
+            lm_logits, *knn_log_probs, lmbda=self.lmbda, ensemble_order=self.ds_ensemble_order
         )  # (nonpad, vocab)
 
         return interpolated_scores
@@ -246,11 +247,11 @@ class KNNWrapper(object):
         return {}
 
     @staticmethod
-    def interpolate(lm_log_probs, knn_log_probs, lmbda):
+    def interpolate(lm_log_probs, knn_log_probs, lmbda, **kwargs):
         return torch.logaddexp(lm_log_probs + np.log(1 - lmbda), knn_log_probs + np.log(lmbda))
 
     @staticmethod
-    def interpolate_discourage(lm_log_probs, knn_log_probs, lmbda):
+    def interpolate_discourage(lm_log_probs, knn_log_probs, lmbda, **kwargs):
         return torch.log(
             torch.nn.functional.relu(
                 torch.exp(np.log(1 + lmbda) + lm_log_probs)
@@ -259,20 +260,22 @@ class KNNWrapper(object):
         )
 
     @staticmethod
-    def ensemble(lm_log_probs, *knn_log_probs, lmbda=2.0):
-        def patch_log_probs(p):
-            return torch.nan_to_num(p, neginf=p[p != -np.inf].min() * 1.001)
-
+    def ensemble(
+        lm_log_probs, *knn_log_probs, lmbda=2.0, ensemble_order=("subtract", "add"), **kwargs
+    ):
         assert isinstance(knn_log_probs, tuple)
         assert isinstance(knn_log_probs[0], torch.Tensor)
 
         # Use the lm log probs as the second set of knn log probs if only one set is provided.
         if len(knn_log_probs) < 2:
-            knn_log_probs = (knn_log_probs[0], lm_log_probs)
-        knn_log_probs_subtract, knn_log_probs_sum = knn_log_probs
+            if ensemble_order == ("subtract", "add"):
+                knn_log_probs = (knn_log_probs[0], lm_log_probs)
+            elif ensemble_order == ("add", "subtract"):
+                knn_log_probs = (lm_log_probs, knn_log_probs[0])
+            else:
+                raise ValueError(f"Invalid ensemble order: {ensemble_order}")
 
-        knn_log_probs_subtract = patch_log_probs(knn_log_probs_subtract)
-        knn_log_probs_sum = patch_log_probs(knn_log_probs_sum)
+        knn_log_probs_subtract, knn_log_probs_sum = knn_log_probs
 
         return torch.nn.functional.log_softmax(
             lm_log_probs + torch.tensor(lmbda) * (knn_log_probs_sum - knn_log_probs_subtract),
