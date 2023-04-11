@@ -7,6 +7,7 @@ from knn_transformers.knnlm import DIST, KEY_TYPE
 
 class GenerationParser:
     """Handle arguments involved in the generation process (kNN-LM + generate.py script)."""
+
     def __init__(self):
         parser = HfArgumentParser((GenerationArguments, KNNArguments))
         self.gen_args, self.knn_args, self.other_strings = parser.parse_args_into_dataclasses(
@@ -68,9 +69,9 @@ class KNNArguments:
     dstore_dir: str = field(default="knn_transformers/checkpoints")
     other_dstore_dir: str = field(default=None)
     knn_sim_func: DIST.from_string = field(default=DIST.l2)
-    lmbda: float = field(default=0.25)
+    lmbda: float = field(default=0.5)
     k: int = field(default=1024)
-    knn_temp: float = field(default=1.0)
+    knn_temp: float = field(default=100)
     # Args for building the faiss index:
     build_index: bool = field(default=False)
     # To use flat index instead of quantized index in Faiss, set to True
@@ -84,7 +85,7 @@ class KNNArguments:
     move_dstore_to_mem: bool = field(default=True)
     no_load_keys: bool = field(default=True)
     recompute_dists: bool = field(default=False)
-    method: str = field(default='interpolation')
+    method: str = field(default="interpolation")
 
     ## RetoMaton args:
     retomaton: bool = field(default=False)
