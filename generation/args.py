@@ -41,6 +41,7 @@ class GenerationArguments:
         eos_samples (int, optional): Number of eos generations. Defaults to 10k
         output_filename (str, optional): Output filename. If None, will be built
             automatically from user parameters. Defaults to None.
+        num_prompts (int, optional): Number of prompts to use. If None, will use all.
     """
 
     output_folder: str
@@ -53,6 +54,7 @@ class GenerationArguments:
     use_eos: bool = field(default=False)
     eos_samples: int = field(default=10_000)
     output_filename: str = field(default=None)
+    num_prompts: int = field(default=None)
 
 
 @dataclass

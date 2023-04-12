@@ -95,6 +95,10 @@ def main(parser: Optional = None) -> Iterable:
     # Remove prompts that have already been generated
     lines = load_cache(output_file)
     df = df.iloc[lines:]
+
+    if gen_args.num_prompts is not None:
+        df = df.iloc[:gen_args.num_prompts]
+
     if df.empty:
         return
 
