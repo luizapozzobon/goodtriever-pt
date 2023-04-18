@@ -97,7 +97,8 @@ def main(parser: Optional = None) -> Iterable:
     df = df.iloc[lines:]
 
     if gen_args.num_prompts is not None:
-        df = df.iloc[:gen_args.num_prompts]
+        if lines <= gen_args.num_prompts:
+            df = df.iloc[: (gen_args.num_prompts - lines)]
 
     if df.empty:
         return
