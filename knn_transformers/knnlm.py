@@ -263,6 +263,11 @@ class KNNWrapper(object):
     def ensemble(
         lm_log_probs, *knn_log_probs, lmbda=2.0, ensemble_order=("subtract", "add"), **kwargs
     ):
+        def patch_log_probs(log_probs):
+            val = log_probs[log_probs > -50].min()
+            log_probs[log_probs <= -50] = val
+            return log_probs
+
         assert isinstance(knn_log_probs, tuple)
         assert isinstance(knn_log_probs[0], torch.Tensor)
 
@@ -276,6 +281,8 @@ class KNNWrapper(object):
                 raise ValueError(f"Invalid ensemble order: {ensemble_order}")
 
         knn_log_probs_subtract, knn_log_probs_sum = knn_log_probs
+        knn_log_probs_subtract = patch_log_probs(knn_log_probs_subtract)
+        knn_log_probs_sum = patch_log_probs(knn_log_probs_sum)
 
         return torch.nn.functional.log_softmax(
             lm_log_probs + torch.tensor(lmbda) * (knn_log_probs_sum - knn_log_probs_subtract),
