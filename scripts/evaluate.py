@@ -244,7 +244,7 @@ def compute_ppl(
     stride: int = 512,
     threshold: float = 0.5,
     full_sequences: bool = False,
-    ppl_as_dexperts: bool = False,
+    ppl_as_dexperts: bool = True,
 ) -> pd.DataFrame:
     """Compute perplexity for prompted or unprompted generations.
 
@@ -270,7 +270,7 @@ def compute_ppl(
         full_sequences (bool, optional): To compute perplexity on joint prompt
             and continuations or not. Defaults to False.
         ppl_as_dexperts (bool, optional): If True, computes perplexity as dexperts.
-            Defaults to False.
+            Defaults to True.
 
     """
 

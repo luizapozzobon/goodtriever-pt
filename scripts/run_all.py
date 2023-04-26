@@ -85,6 +85,7 @@ def main(
         compute_toxicity=True,
         model_id=perplexity_model,
         sample_perplexity=sample_perplexity,
+        ppl_as_dexperts=True,
     )
 
 
