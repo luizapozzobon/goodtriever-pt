@@ -244,12 +244,16 @@ class Datastore:
             mode = "w+"
             Path(keys_filename).parent.mkdir(parents=True, exist_ok=True)
 
+        start = time.time()
         self.dstore_keys = np.memmap(
             keys_filename, dtype=np.float16, mode=mode, shape=(self.dstore_size, self.dimension)
         )
+        end = time.time()
+        logger.info(f"Loading keys took {end - start} s")
         self.dstore_vals = np.memmap(
             vals_filename, dtype=np.int32, mode=mode, shape=(self.dstore_size, 1)
         )
+        logger.info(f"Loading vals took {time.time() - end} s")
         return self
 
     def get_dstore_size(self):
