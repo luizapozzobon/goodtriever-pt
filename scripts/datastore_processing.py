@@ -1,14 +1,16 @@
 from pathlib import Path
 
 import fire
+import numpy as np
 import pandas as pd
 from datasets import load_dataset
 
 
 def main(
     output_folder: str,
-    use_paradetox: bool = True,
-    use_rtp: bool = True,
+    use_paradetox: bool = False,
+    use_rtp: bool = False,
+    use_toxigen: bool = True,
     rtp_path: str = "data/rescored/realtoxicityprompts-data/rtp_joint_sequences_rescored.jsonl",
     threshold: float = 0.5,
 ):
@@ -30,6 +32,37 @@ def main(
 
         toxic_ds = pd.concat([toxic_ds, pd.DataFrame(toxic["text"], columns=["text"])])
         nontoxic_ds = pd.concat([nontoxic_ds, pd.DataFrame(nontoxic["text"], columns=["text"])])
+
+    if use_toxigen:
+        dataset = load_dataset("skg/toxigen-data", name="train", use_auth_token=True)[
+            "train"
+        ]  # 250k training examples
+
+        toxic_mask = np.array(dataset["prompt_label"]) >= 0.5
+        nontoxic_mask = np.array(dataset["prompt_label"]) < 0.5
+
+        prompts = np.array(dataset["prompt"])
+        toxic = np.stack([s for p in prompts[toxic_mask] for s in p.split("\\n- ")]).reshape(-1)
+        nontoxic = np.stack([s for p in prompts[nontoxic_mask] for s in p.split("\\n- ")]).reshape(
+            -1
+        )
+        toxic = pd.DataFrame(toxic, columns=["text"]).drop_duplicates()
+        nontoxic = pd.DataFrame(nontoxic, columns=["text"]).drop_duplicates()
+
+        gens = np.array(dataset["generation"])
+
+        toxic = pd.concat([toxic, pd.DataFrame(gens[toxic_mask], columns=["text"])])
+        nontoxic = pd.concat([nontoxic, pd.DataFrame(gens[nontoxic_mask], columns=["text"])])
+
+        toxic["text"] = (
+            toxic["text"].str.replace(r"\\n", "", regex=True).str.strip("-").str.strip()
+        )
+        nontoxic["text"] = (
+            nontoxic["text"].str.replace(r"\\n", "", regex=True).str.strip("-").str.strip()
+        )
+
+        toxic_ds = pd.concat([toxic_ds, toxic])
+        nontoxic_ds = pd.concat([nontoxic_ds, nontoxic])
 
     output_folder = Path(output_folder)
     output_folder.mkdir(exist_ok=True, parents=True)
