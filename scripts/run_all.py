@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import fire
+import numpy as np
 import torch
 
 from experiments.logger import configure_logger
@@ -51,15 +52,25 @@ def main(
     logger = logging.getLogger(__name__)
 
     # Generate
-    start = time.time()
     num_instances = 0
+    time_taken = []
+    start = time.time()
+    start_instance = time.time()
     for _ in generate(parser):
+        time_taken.append(time.time() - start_instance)
+        start_instance = time.time()
+
+        if num_instances > 0 and num_instances % 1000 == 0:
+            logger.info(
+                f"Actual time per sequence of {parser.gen_args.max_new_tokens} tokens"
+                f" (last 1k samples): {np.mean(time_taken) (np.std(time_taken)):.5f} seconds."
+            )
+            time_taken = []
+
         num_instances += 1
         pass
     end = time.time()
-    total_sequences = (
-        num_instances * parser.gen_args.batch_size * parser.gen_args.num_return_sequences
-    )
+    total_sequences = num_instances * parser.gen_args.num_return_sequences
     logger.info(f"Generation took {end - start:.5f} seconds.")
     logger.info(f"Number of generated sequences: {total_sequences}")
     if total_sequences:

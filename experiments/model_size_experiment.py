@@ -10,17 +10,17 @@ from logger import configure_logger
 
 
 def main(
-    model_name,
-    experiment_name="model_size",
-    output_folder="outputs/experiments/",
-    dstores="both",
-    toxic_train_file="data/jigsaw/toxicity_gte0.5_clean.json",
-    nontoxic_train_file="data/jigsaw/toxicity_eq0_half_clean.json",
-    method="ensemble",
-    lmbda=2.0,
-    temperature=10,
-    prompts_path="data/dexperts/prompts/nontoxic_prompts-10k.jsonl",
-    only_generate=False,
+    model_name: str,
+    experiment_name: str = "datastore_size",
+    output_folder: str = "outputs/experiments/",
+    dstores: str = "both",
+    toxic_train_file: str = "data/jigsaw/toxicity_gte0.5_clean.json",
+    nontoxic_train_file: str = "data/jigsaw/toxicity_eq0_half_clean.json",
+    method: str = "ensemble",
+    lmbda: float = 2.0,
+    temperature: int = 10,
+    prompts_path: str = "data/dexperts/prompts/nontoxic_prompts-10k.jsonl",
+    only_generate: bool = False,
 ):
     output_folder = Path(output_folder) / experiment_name / model_name
     (output_folder / "logs").mkdir(parents=True, exist_ok=True)
@@ -89,7 +89,6 @@ def main(
             --lmbda {lmbda} \
             --knn_temp {temperature} \
             --method {method} \
-            --num_prompts 10 \
             --batch_size 4
     """
 
