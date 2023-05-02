@@ -57,26 +57,23 @@ def main(
     start = time.time()
     start_instance = time.time()
     for _ in generate(parser):
-        time_taken.append(time.time() - start_instance)
-        start_instance = time.time()
-
-        if num_instances > 0 and num_instances % 1000 == 0:
-            logger.info(
-                f"Actual time per sequence of {parser.gen_args.max_new_tokens} tokens"
-                f" (last 1k samples): {np.mean(time_taken) (np.std(time_taken)):.5f} seconds."
+        if num_instances > 0:
+            time_taken.append(
+                (time.time() - start_instance) / parser.gen_args.num_return_sequences
             )
-            time_taken = []
-
         num_instances += 1
+        start_instance = time.time()
         pass
     end = time.time()
     total_sequences = num_instances * parser.gen_args.num_return_sequences
     logger.info(f"Generation took {end - start:.5f} seconds.")
-    logger.info(f"Number of generated sequences: {total_sequences}")
-    if total_sequences:
-        logger.info(
-            f"Estimated time per sequence of {parser.gen_args.max_new_tokens} tokens: {(end - start) / (total_sequences):.5f} seconds."
-        )
+    logger.info(
+        f"Number of generated sequences: {total_sequences} // Num instances: {num_instances}"
+    )
+    logger.info(
+        f"Actual time per sequence of {parser.gen_args.max_new_tokens} tokens: "
+        f"{np.mean(time_taken):.5f} ({np.std(time_taken):.5f}) seconds."
+    )
 
     # To avoid faiss error: "Failed to cudaFree pointer"
     torch.cuda.empty_cache()
