@@ -1,5 +1,4 @@
 import logging
-import warnings
 from enum import Enum, auto
 
 import numpy as np
@@ -428,6 +427,9 @@ class KNNSaver(object):
             raise ex
 
         self.dstore_idx += batch_time_size
+
+        if self.dstore_idx >= self.dstore_size:
+            logger.info(f"Datastore is full: {self.dstore_idx}/{self.dstore_size}")
 
         return output
 

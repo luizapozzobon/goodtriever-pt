@@ -266,6 +266,7 @@ class KNNArguments:
     num_clusters: int = field(default=500000)
     sample_size: int = field(default=20000000)
     members: str = field(default=None)
+    limit_eval_to_dstore: bool = field(default=False)
 
 
 def main():
@@ -597,7 +598,10 @@ def main():
         if "validation" not in tokenized_datasets:
             raise ValueError("--do_eval requires a validation dataset")
         eval_dataset = lm_datasets[data_args.eval_subset]
-        if data_args.max_eval_samples is not None:
+        if data_args.max_eval_samples is not None or knn_args.limit_eval_to_dstore:
+            if knn_args.limit_eval_to_dstore:
+                idx = math.ceil(knn_args.dstore_size / block_size) * 2
+                data_args.max_eval_samples = min(idx, eval_dataset.num_rows)
             eval_dataset = eval_dataset.select(range(data_args.max_eval_samples))
 
     # Initialize our Trainer
@@ -609,7 +613,9 @@ def main():
         tokenizer=tokenizer,
         # Data collator will default to DataCollatorWithPadding, so we change it.
         data_collator=default_data_collator,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=data_args.patience)]
+        callbacks=[
+            EarlyStoppingCallback(early_stopping_patience=data_args.patience),
+        ]
         if data_args.patience is not None
         else None,
     )

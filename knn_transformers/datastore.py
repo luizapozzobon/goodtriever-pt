@@ -202,6 +202,7 @@ class Datastore:
                 size=[min(1000000, self.dstore_vals.shape[0])],
                 replace=False,
             )
+            logger.info(f"Training samples: {random_sample.shape[0]}")
             start = time.time()
             # Faiss does not handle adding keys in fp16 as of writing this.
             index.train(self.dstore_keys[random_sample].astype(np.float32))
