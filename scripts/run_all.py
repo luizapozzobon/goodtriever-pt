@@ -17,7 +17,7 @@ from scripts.score import main as score
 
 def main(
     perspective_rate_limit: int = 90,
-    perplexity_model: str = "gpt2-medium",
+    perplexity_model: str = "gpt2-xl",
     collate_chunksize: int = int(1e5),
     sample_perplexity: int = 1000,
 ) -> None:

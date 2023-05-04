@@ -11,7 +11,7 @@ from logger import configure_logger
 
 def main(
     model_name: str,
-    experiment_name: str = "datastore_size",
+    experiment_name: str = "model_size",
     output_folder: str = "outputs/experiments/",
     dstores: str = "both",
     toxic_train_file: str = "data/jigsaw/toxicity_gte0.5_clean.json",
