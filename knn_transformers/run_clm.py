@@ -602,6 +602,7 @@ def main():
             if knn_args.limit_eval_to_dstore:
                 idx = math.ceil(knn_args.dstore_size / block_size) * 2
                 data_args.max_eval_samples = min(idx, eval_dataset.num_rows)
+                logger.info(f"Actual eval samples: {data_args.max_eval_samples}")
             eval_dataset = eval_dataset.select(range(data_args.max_eval_samples))
 
     # Initialize our Trainer

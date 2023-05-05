@@ -67,6 +67,11 @@ def main(
                 logger.info(f"Skipping datastore build and index train for datastore {i}.")
                 continue
 
+            if tokens:
+                logger.info(f"Datastore limited to {tokens} tokens.")
+            else:
+                logger.info(f"Unlimited datastore.")
+
             ds_cmd = f"""
                 python -u -m knn_transformers.run_clm \
                     --model_name_or_path {model_name} \
