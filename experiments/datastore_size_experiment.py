@@ -35,14 +35,18 @@ def main(
 
     assert len(toxic_tokens) == len(nontoxic_tokens), "Must have same number of dstore sizes."
 
+    (base_folder / "logs").mkdir(parents=True, exist_ok=True)
+    configure_logger(base_folder / "logs/experiment.log")
+    logger = logging.getLogger(__name__)
+
     for dstore_tokens, other_dstore_tokens in zip(toxic_tokens, nontoxic_tokens):
         dstore_dirs = ["--dstore_dir", "--other_dstore_dir"]
         output_folder = base_folder / f"toxic={dstore_tokens}_nontoxic={other_dstore_tokens}"
         (output_folder / "logs").mkdir(parents=True, exist_ok=True)
 
-        configure_logger(output_folder / "logs/experiment.log")
-        logger = logging.getLogger(__name__)
-        logger.info(f"Starting '{experiment_name}/{model_name}' experiment.")
+        logger.info(f"{'====' * 5}")
+        logger.info(f"Starting '{experiment_name}/{model_name}/toxic={dstore_tokens}_nontoxic={other_dstore_tokens}' experiment.")
+        logger.info(f"{'====' * 5}")
 
         for i, train_file in enumerate([toxic_train_file, nontoxic_train_file]):
             if i == 0:
