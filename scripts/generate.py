@@ -15,7 +15,7 @@ from generation.base import batched_generation
 from generation.models import setup_model, setup_tokenizer
 from utils.utils import load_cache, structure_output_filepath
 
-ALLOWED_MODELS = ["gpt2", "gpt2-medium"]
+ALLOWED_MODELS = ["gpt2", "gpt2-medium", "gpt2-large"]
 
 
 def build_filename(gen_args, knn_args) -> str:
@@ -58,7 +58,7 @@ def main(parser: Optional = None) -> Iterable:
     gen_args, knn_args = parser.gen_args, parser.knn_args
 
     if gen_args.use_eos:
-        if gen_args.model_name in ["gpt2", "gpt2-medium"]:
+        if gen_args.model_name in ALLOWED_MODELS:
             df = np.repeat(pd.Series("<|endoftext|>", name="text"), gen_args.eos_samples)
             df = df.to_frame().reset_index(drop=True)
         else:

@@ -21,7 +21,7 @@ def main(param="lambda", temperature=1, dstores="both", min_alpha=0.5, max_alpha
         python -m scripts.run_all \
             --model_name {model_name} \
             --prompts_path data/dexperts/prompts/nontoxic_prompts-10k.jsonl \
-            --output_folder outputs/gpt2_jigsaw/ensemble/small_prompted_exp_patch_min/temperature_{temperature}/{param}/{dstores}/{param}_{value} \
+            --output_folder outputs/experiments/alpha_temperature/temperature_{temperature}/{param}/{dstores}/{param}_{value} \
             {dstore_dirs} \
             --knn True \
             --method ensemble \

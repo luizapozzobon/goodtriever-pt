@@ -30,7 +30,7 @@ def main(
         perspective_rate_limit (int, optional): Maximum number of PerspectiveAPI
             calls per second. Defaults to 110.
         perplexity_model (str, optional): Model to compute perplexity with.
-            Defaults to "gpt2-medium".
+            Defaults to "gpt2-xl".
         collate_chunksize (int, optional): Used in the collate script.
             Chunksize to split large files when loading with pandas.
             Default value chosen as a reasonable number that usually

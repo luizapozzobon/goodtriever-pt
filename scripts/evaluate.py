@@ -350,7 +350,7 @@ def main(
         compute_toxicity (bool, optional): Whether to compute diversity metrics or not.
             Defaults to True.
         model_name (str, optional): Which model to compute perplexity with.
-            Defaults to "gpt2-medium".
+            Defaults to "gpt2-xl".
         sample_perplexity (int, optional): The amount of prompt samples to
             from each toxicity condition to compute perplexity.
             If None, computes for all samples.
