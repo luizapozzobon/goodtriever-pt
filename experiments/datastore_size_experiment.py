@@ -54,6 +54,7 @@ def main(
             elif i == 1:
                 tokens = other_dstore_tokens
                 if dstores == "toxic":
+                    dstore_dirs = dstore_dirs[:1]
                     continue
                 elif dstores == "nontoxic":
                     raise NotImplementedError(

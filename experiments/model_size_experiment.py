@@ -34,6 +34,7 @@ def main(
     for i, train_file in enumerate([toxic_train_file, nontoxic_train_file]):
         if dstores == "toxic":
             if i == 1:
+                dstore_dirs = dstore_dirs[:1]
                 continue
         elif dstores == "nontoxic":
             raise NotImplementedError("")
