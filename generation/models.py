@@ -32,6 +32,7 @@ def setup_model(model_name: str, knn_args):
             knn_gpu=knn_args.knn_gpu,
             recompute_dists=knn_args.recompute_dists,
             k=knn_args.k,
+            other_k=knn_args.other_k,
             lmbda=knn_args.lmbda,
             knn_temp=knn_args.knn_temp,
             probe=knn_args.probe,
