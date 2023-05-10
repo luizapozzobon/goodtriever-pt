@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Iterable
 
 import fire
 import torch
@@ -17,6 +17,7 @@ def main(
     nontoxic_tokens: Optional[Union[int, List]] = None,
     num_prompts: Optional[int] = None,
     output_folder: str = "outputs/experiments/",
+    rate_limit: int = 30,
     dstores: str = "both",
     toxic_train_file: str = "data/jigsaw/toxicity_gte0.5_clean.json",
     nontoxic_train_file: str = "data/jigsaw/toxicity_eq0_half_clean.json",
@@ -28,10 +29,10 @@ def main(
 ):
     base_folder = Path(output_folder) / experiment_name / model_name
 
-    if not isinstance(toxic_tokens, tuple):
-        toxic_tokens = (toxic_tokens,)
-    if not isinstance(nontoxic_tokens, tuple):
-        nontoxic_tokens = (nontoxic_tokens,)
+    if not isinstance(toxic_tokens, Iterable) and isinstance(nontoxic_tokens, Iterable):
+        toxic_tokens = (toxic_tokens,) * len(nontoxic_tokens)
+    if not isinstance(nontoxic_tokens, Iterable) and isinstance(toxic_tokens, Iterable):
+        nontoxic_tokens = (nontoxic_tokens,) * len(toxic_tokens)
 
     assert len(toxic_tokens) == len(nontoxic_tokens), "Must have same number of dstore sizes."
 
@@ -45,7 +46,9 @@ def main(
         (output_folder / "logs").mkdir(parents=True, exist_ok=True)
 
         logger.info(f"{'====' * 5}")
-        logger.info(f"Starting '{experiment_name}/{model_name}/toxic={dstore_tokens}_nontoxic={other_dstore_tokens}' experiment.")
+        logger.info(
+            f"Starting '{experiment_name}/{model_name}/toxic={dstore_tokens}_nontoxic={other_dstore_tokens}' experiment."
+        )
         logger.info(f"{'====' * 5}")
 
         for i, train_file in enumerate([toxic_train_file, nontoxic_train_file]):
@@ -112,6 +115,7 @@ def main(
         generate_cmd = f"""
             python -m scripts.run_all \
                 --output_folder {output_folder} \
+                --perspective_rate_limit {rate_limit} \
                 --model_name {model_name} \
                 --prompts_path {prompts_path} \
                 {" ".join(dstore_dirs)} \
