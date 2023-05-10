@@ -5,6 +5,7 @@ import fire
 import torch
 from typing import Tuple, Iterable
 
+
 def main(
     toxic_ks: Tuple = (1, 2, 8, 64, 256, 1024),
     nontoxic_ks: Tuple = (1, 2, 8, 64, 256, 1024),
