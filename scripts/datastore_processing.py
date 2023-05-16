@@ -14,6 +14,27 @@ def main(
     rtp_path: str = "data/rescored/realtoxicityprompts-data/rtp_joint_sequences_rescored.jsonl",
     threshold: float = 0.5,
 ):
+    """Process common datasets to be used as datastores.
+
+    Data is saved as toxic and non-toxic json files.
+
+    Currently, this script supports processing for:
+        - RealToxicityPrompts
+        - Paradetox
+        - Toxigen
+
+    If multiple datasets are processed in a same run, the final json
+    files contains data from them all.
+
+    Args:
+        output_folder (str): Folder to save processed json files to.
+        use_paradetox (bool, optional): Whether to process paradetox. Defaults to False.
+        use_rtp (bool, optional): Whether to process RTP. Defaults to False.
+        use_toxigen (bool, optional): Whether to process Toxigen. Defaults to True.
+        rtp_path (str, optional): Path to RTP joint sequences.
+            Defaults to "data/rescored/realtoxicityprompts-data/rtp_joint_sequences_rescored.jsonl".
+        threshold (float, optional): Toxicity threshold. Defaults to 0.5.
+    """
     toxic_ds = pd.DataFrame()
     nontoxic_ds = pd.DataFrame()
 
