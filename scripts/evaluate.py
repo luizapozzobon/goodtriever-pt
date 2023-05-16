@@ -14,7 +14,7 @@ from utils.utils import structure_output_filepath
 
 
 def compute_distinctness(generations_df: pd.DataFrame, output_file: Path) -> pd.DataFrame:
-    """Compute distinctness metrics for prompted generations.
+    """Compute distinctness (diversity) metrics for prompted generations.
 
     Generation diversity is measured using the mean number of distinct n-grams,
     normalized by the length of text (Li et al., 2016), among the 25 generations
@@ -248,7 +248,6 @@ def compute_ppl(
     sample_perplexity: Optional[int] = 1000,
     stride: int = 512,
     threshold: float = 0.5,
-    full_sequences: bool = False,
     ppl_as_dexperts: bool = True,
 ) -> pd.DataFrame:
     """Compute perplexity for prompted or unprompted generations.
@@ -272,19 +271,8 @@ def compute_ppl(
             https://www.reddit.com/r/MachineLearning/comments/oye64h/r_struggling_to_reproduce_perplexity_benchmarks/
         threshold (float, optional): Toxicity threshold.
             If higher than `threshold`, the text is toxic. Defaults to 0.5.
-        full_sequences (bool, optional): To compute perplexity on joint prompt
-            and continuations or not. Defaults to False.
-        ppl_as_dexperts (bool, optional): If True, computes perplexity as dexperts.
-            Defaults to True.
 
     """
-
-    def prepare_generations(row: pd.Series, join_prompts=False):
-        return [
-            f"{row.prompt.get('text')}{g.get('text')}" if join_prompts else g.get("text")
-            for g in row.generations
-        ]
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     model = GPT2LMHeadModel.from_pretrained(model_name).to(device)
@@ -314,27 +302,6 @@ def compute_ppl(
                             subdf, model, tokenizer, device="cuda"
                         )
                     }
-                else:
-                    if full_sequences:
-                        partial_prepare = partial(prepare_generations, join_prompts=True)
-                        predictions = subdf.apply(
-                            partial_prepare, axis=1, result_type="expand"
-                        ).values
-                    else:
-                        predictions = subdf.apply(
-                            prepare_generations, axis=1, result_type="expand"
-                        ).values
-
-                    print(
-                        f"Condition '{condition}': {predictions.shape[0]} prompt samples being scored "
-                        f"for perplexity. Total sequences: {predictions.reshape(-1).shape[0]}."
-                    )
-
-                    ppl[condition] = {
-                        "perplexity": get_perplexity(
-                            predictions.reshape(-1), model, tokenizer, device="cuda", stride=stride
-                        )
-                    }
     else:
         predictions = df.text.values
         print(f"Condition 'unprompted' total sequences: {predictions.shape[0]}.")
@@ -360,8 +327,6 @@ def main(
     sample_perplexity: Optional[int] = 1000,
     stride: int = 512,
     threshold: float = 0.5,
-    full_sequences: bool = False,
-    ppl_as_dexperts: bool = False,
 ):
     """Compute toxicity and perplexity metrics for prompted or unprompted generations.
 
@@ -385,15 +350,11 @@ def main(
             If None, computes for all samples.
             Defaults to None.
         stride (int, optional): Stride to compute perplexity. It usually is the model's
-            maximum sequence lenght of a model.
+            maximum sequence length of a model.
             Defaults to 512. More details on:
             https://www.reddit.com/r/MachineLearning/comments/oye64h/r_struggling_to_reproduce_perplexity_benchmarks/
         threshold (float, optional): Toxicity threshold.
             If higher than `threshold`, the text is toxic. Defaults to 0.5.
-        full_sequences (bool, optional): To compute perplexity on joint prompt
-            and continuations or not. Defaults to False.
-        ppl_as_dexperts (bool, optional): Whether to compute perplexity as dexperts paper.
-            Defaults to False.
 
     """
     for path, prompted in zip([unprompted_json, prompted_json], [False, True]):
