@@ -16,6 +16,11 @@ from utils.utils import structure_output_filepath
 def compute_distinctness(generations_df: pd.DataFrame, output_file: Path) -> pd.DataFrame:
     """Compute distinctness metrics for prompted generations.
 
+    Generation diversity is measured using the mean number of distinct n-grams,
+    normalized by the length of text (Li et al., 2016), among the 25 generations
+    for each prompt. We report Dist-1, Dist-2, and Dist-3 scores for distinct
+    uni-, bi-, and trigrams, respectively.
+
     Taken from DExperts:
         https://github.com/alisawuffles/DExperts/blob/main/scripts/evaluation/evaluate_generations.py
 
@@ -237,7 +242,7 @@ def get_perplexity(
 
 def compute_ppl(
     df: pd.DataFrame,
-    model_id: str,
+    model_name: str,
     output_file: Path,
     prompted: bool,
     sample_perplexity: Optional[int] = 1000,
@@ -254,7 +259,7 @@ def compute_ppl(
 
     Args:
         df (pd.DataFrame): Prompted or unprompted generations dataframe.
-        model_id (str): Model to compute perplexity with.
+        model_name (str): Model to compute perplexity with.
         output_file (Path): Path to save results csv in.
         prompted (bool): If current generations were prompted or not.
         sample_perplexity (int, optional): The amount of prompt samples to
@@ -282,8 +287,8 @@ def compute_ppl(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = GPT2LMHeadModel.from_pretrained(model_id).to(device)
-    tokenizer = GPT2TokenizerFast.from_pretrained(model_id)
+    model = GPT2LMHeadModel.from_pretrained(model_name).to(device)
+    tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
 
     prompt_conditions = {
         "toxic": f"toxicity > {threshold}",
@@ -351,7 +356,7 @@ def main(
     compute_perplexity: bool = True,
     compute_toxicity: bool = True,
     compute_diversity: bool = True,
-    model_id: str = "gpt2-medium",
+    model_name: str = "gpt2-xl",
     sample_perplexity: Optional[int] = 1000,
     stride: int = 512,
     threshold: float = 0.5,
@@ -373,7 +378,7 @@ def main(
             Defaults to True.
         compute_toxicity (bool, optional): Whether to compute diversity metrics or not.
             Defaults to True.
-        model_id (str, optional): Which model to compute perplexity with.
+        model_name (str, optional): Which model to compute perplexity with.
             Defaults to "gpt2-medium".
         sample_perplexity (int, optional): The amount of prompt samples to
             from each toxicity condition to compute perplexity.
@@ -416,7 +421,7 @@ def main(
                 )
                 compute_ppl(
                     df,
-                    model_id,
+                    model_name,
                     output_file,
                     prompted=prompted,
                     sample_perplexity=sample_perplexity,
