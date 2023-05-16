@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import List, Optional, Union, Iterable
+from typing import Tuple, Optional, Union, Iterable
 
 import fire
 import torch
@@ -11,14 +11,14 @@ from logger import configure_logger
 
 
 def main(
-    model_name: str,
-    experiment_name: str,
-    toxic_tokens: Optional[Union[int, List]] = None,
-    nontoxic_tokens: Optional[Union[int, List]] = None,
+    toxic_tokens: Union[int, Tuple] = None,
+    nontoxic_tokens: Union[int, Tuple] = (10_000, 500_000, None),
     num_prompts: Optional[int] = None,
     output_folder: str = "outputs/experiments/",
+    experiment_name: str = "datastore_size",
     rate_limit: int = 30,
     dstores: str = "both",
+    model_name: str = "gpt2-large",
     toxic_train_file: str = "data/jigsaw/toxicity_gte0.5_clean.json",
     nontoxic_train_file: str = "data/jigsaw/toxicity_eq0_half_clean.json",
     method: str = "ensemble",
@@ -27,6 +27,51 @@ def main(
     prompts_path: str = "data/dexperts/prompts/nontoxic_prompts-10k.jsonl",
     only_generate: bool = False,
 ):
+    """Run prompted generation experiment with varying datastore sizes.
+
+    Define the size of datastores by setting a list to `toxic_tokens`
+    and `nontoxic_tokens`. The list should be of equal size and experiments
+    are define by the index of those list (i.e. index 0 defines the amount of
+    tokens for that datastore on run 0).
+
+    If any of `toxic` or `nontoxic_tokens` is set to an integer,
+    it will be repeated to match the size of the other.
+
+    Args:
+        toxic_tokens (Union[int, Tuple], optional): Tuple of the size of the
+            toxic datastore at each experiment. If None, uses all available tokens.
+            Defaults to None.
+        nontoxic_tokens (Union[int, Tuple], optional): Tuple of the size of the
+            toxic datastore at each experiment. If None, uses all available tokens.
+            Defaults to (10_000, 500_000, None).
+        num_prompts (Optional[int], optional): Number of prompts to run experiments on.
+            If None, run to all available prompts. Defaults to None.
+        output_folder (str, optional): Name of output folder.
+            Defaults to "outputs/experiments/".
+        experiment_name (str, optional): Name of experiment. Defaults to "datastore_size".
+        rate_limit (int, optional): Perspective API Rate Limit. Defaults to 30.
+        dstores (str, optional): Whether to use only 'toxic' or 'both' datastores.
+            Defaults to "both".
+        model_name (str, optional): Base model to use. Defaults to "gpt2-large".
+        toxic_train_file (str, optional): Path to train file with toxic comments.
+            Defaults to "data/jigsaw/toxicity_gte0.5_clean.json".
+        nontoxic_train_file (str, optional): Path to train file with nontoxic comments.
+            Defaults to "data/jigsaw/toxicity_eq0_half_clean.json".
+        method (str, optional): Which method to use. Choices are: ensemble,
+            interpolation and interpolation_discourage. Defaults to "ensemble".
+        lmbda (float, optional): Lambda (interpolation) or alpha (ensemble) value.
+            Defaults to 2.0.
+        temperature (int, optional): kNN logprobs temperature parameter.
+            Defaults to 100.
+        prompts_path (str, optional): Path to prompts path.
+            Defaults to "data/dexperts/prompts/nontoxic_prompts-10k.jsonl".
+        only_generate (bool, optional): Whether to skip datastore building and
+            index training or not. Defaults to False.
+
+    Raises:
+        NotImplementedError: Raised when unsupported option of `dstores` is given.
+
+    """
     base_folder = Path(output_folder) / experiment_name / model_name
 
     if not isinstance(toxic_tokens, Iterable) and isinstance(nontoxic_tokens, Iterable):
@@ -59,10 +104,10 @@ def main(
                 if dstores == "toxic":
                     dstore_dirs = dstore_dirs[:1]
                     continue
-                elif dstores == "nontoxic":
-                    raise NotImplementedError(
-                        "Currently, just using both datastores or just the toxic one is supported."
-                    )
+            elif dstores == "nontoxic":
+                raise NotImplementedError(
+                    "Currently, just using both datastores or just the toxic one is supported."
+                )
 
             dstore = base_folder / "checkpoints" / f"gpt2_{Path(train_file).stem}_{tokens}"
             dstore_dirs[i] = f"{dstore_dirs[i]} {dstore}"
