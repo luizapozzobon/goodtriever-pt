@@ -52,6 +52,11 @@ def structure_output_filepath(
             output_file = f"{stem.replace('collated', 'perplexity')}.csv"
         else:
             output_file = f"{stem}_perplexity.csv"
+    elif step == "diversity":
+        if "collated" in stem in stem:
+            output_file = f"{stem.replace('collated', 'diversity')}.csv"
+        else:
+            output_file = f"{stem}_diversity.csv"
     else:
         raise NotImplementedError(
             f"Step {step} not implemented for automatic filename structuring."

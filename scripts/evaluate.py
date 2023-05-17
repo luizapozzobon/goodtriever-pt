@@ -13,6 +13,84 @@ from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 from utils.utils import structure_output_filepath
 
 
+def compute_distinctness(generations_df: pd.DataFrame, output_file: Path) -> pd.DataFrame:
+    """Compute distinctness (diversity) metrics for prompted generations.
+
+    Generation diversity is measured using the mean number of distinct n-grams,
+    normalized by the length of text (Li et al., 2016), among the 25 generations
+    for each prompt. We report Dist-1, Dist-2, and Dist-3 scores for distinct
+    uni-, bi-, and trigrams, respectively.
+
+    Taken from DExperts:
+        https://github.com/alisawuffles/DExperts/blob/main/scripts/evaluation/evaluate_generations.py
+
+    """
+    dist1, dist2, dist3 = [], [], []
+    # calculate dist1, dist2, dist3 across generations for every prompt
+    for i, row in tqdm(
+        generations_df.iterrows(), total=len(generations_df.index), desc="Evaluating diversity"
+    ):
+        generations = [g["text"] for g in row["generations"]]
+        unigrams, bigrams, trigrams = set(), set(), set()
+        total_words = 0
+        for gen in generations:
+            o = gen.split(" ")
+            total_words += len(o)
+            unigrams.update(o)
+            for i in range(len(o) - 1):
+                bigrams.add(o[i] + "_" + o[i + 1])
+            for i in range(len(o) - 2):
+                trigrams.add(o[i] + "_" + o[i + 1] + "_" + o[i + 2])
+        dist1.append(len(unigrams) / total_words)
+        dist2.append(len(bigrams) / total_words)
+        dist3.append(len(trigrams) / total_words)
+
+    # take the mean across prompts
+    dist1, dist2, dist3 = np.nanmean(dist1), np.nanmean(dist2), np.nanmean(dist3)
+
+    df = pd.DataFrame({"dist1": dist1, "dist2": dist2, "dist3": dist3}, index=[0])
+    df.to_csv(output_file)
+
+    return df
+
+
+def conditional_perplexity(
+    generations_df: pd.DataFrame, model: Callable, tokenizer: Callable, device: str = "cuda"
+):
+    """Compute conditional perplexity for prompted generations.
+
+    Taken from DExperts:
+        https://github.com/alisawuffles/DExperts/blob/main/scripts/evaluation/evaluate_generations.py
+
+    """
+    perplexities = []
+    # for every prompt
+    for i, row in tqdm(
+        generations_df.iterrows(), total=len(generations_df.index), desc="Evaluating fluency"
+    ):
+        prompt = row.prompt["text"]
+        prompt_input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
+        prompt_loss = model(prompt_input_ids, labels=prompt_input_ids)[0] * (
+            prompt_input_ids.shape[1] - 1
+        )
+        # for every generation conditioned on the prompt
+        generations = [g["text"] for g in row["generations"]]
+        for gen in generations:
+            full_input_ids = tokenizer.encode(prompt + gen, return_tensors="pt").to(device)
+            full_loss = model(full_input_ids, labels=full_input_ids)[0] * (
+                full_input_ids.shape[1] - 1
+            )
+            loss = (full_loss - prompt_loss) / (
+                full_input_ids.shape[1] - prompt_input_ids.shape[1]
+            )
+            ppl = np.exp(loss.item())
+            if ppl < 1e4:  # for sanity
+                perplexities.append(ppl)
+        if i % 10 == 0:
+            print(np.nanmean(perplexities).round(2))
+    return np.nanmean(perplexities)
+
+
 def compute_toxicity_unprompted(
     df: pd.DataFrame, output_file: Path, threshold: float = 0.5
 ) -> pd.DataFrame:
@@ -164,13 +242,13 @@ def get_perplexity(
 
 def compute_ppl(
     df: pd.DataFrame,
-    model_id: str,
+    model_name: str,
     output_file: Path,
     prompted: bool,
     sample_perplexity: Optional[int] = 1000,
     stride: int = 512,
     threshold: float = 0.5,
-    full_sequences: bool = False,
+    ppl_as_dexperts: bool = True,
 ) -> pd.DataFrame:
     """Compute perplexity for prompted or unprompted generations.
 
@@ -180,7 +258,7 @@ def compute_ppl(
 
     Args:
         df (pd.DataFrame): Prompted or unprompted generations dataframe.
-        model_id (str): Model to compute perplexity with.
+        model_name (str): Model to compute perplexity with.
         output_file (Path): Path to save results csv in.
         prompted (bool): If current generations were prompted or not.
         sample_perplexity (int, optional): The amount of prompt samples to
@@ -193,21 +271,12 @@ def compute_ppl(
             https://www.reddit.com/r/MachineLearning/comments/oye64h/r_struggling_to_reproduce_perplexity_benchmarks/
         threshold (float, optional): Toxicity threshold.
             If higher than `threshold`, the text is toxic. Defaults to 0.5.
-        full_sequences (bool, optional): To compute perplexity on joint prompt
-            and continuations or not. Defaults to False.
 
     """
-
-    def prepare_generations(row: pd.Series, join_prompts=False):
-        return [
-            f"{row.prompt.get('text')}{g.get('text')}" if join_prompts else g.get("text")
-            for g in row.generations
-        ]
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = GPT2LMHeadModel.from_pretrained(model_id).to(device)
-    tokenizer = GPT2TokenizerFast.from_pretrained(model_id)
+    model = GPT2LMHeadModel.from_pretrained(model_name).to(device)
+    tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
 
     prompt_conditions = {
         "toxic": f"toxicity > {threshold}",
@@ -227,26 +296,12 @@ def compute_ppl(
             subdf = df.loc[condition_df.index]
 
             if not subdf.empty:
-                if full_sequences:
-                    partial_prepare = partial(prepare_generations, join_prompts=True)
-                    predictions = subdf.apply(
-                        partial_prepare, axis=1, result_type="expand"
-                    ).values
-                else:
-                    predictions = subdf.apply(
-                        prepare_generations, axis=1, result_type="expand"
-                    ).values
-
-                print(
-                    f"Condition '{condition}': {predictions.shape[0]} prompt samples being scored "
-                    f"for perplexity. Total sequences: {predictions.reshape(-1).shape[0]}."
-                )
-
-                ppl[condition] = {
-                    "perplexity": get_perplexity(
-                        predictions.reshape(-1), model, tokenizer, device="cuda", stride=stride
-                    )
-                }
+                if ppl_as_dexperts:
+                    ppl[condition] = {
+                        "perplexity": conditional_perplexity(
+                            subdf, model, tokenizer, device="cuda"
+                        )
+                    }
     else:
         predictions = df.text.values
         print(f"Condition 'unprompted' total sequences: {predictions.shape[0]}.")
@@ -267,11 +322,11 @@ def main(
     prompted_json: Optional[str] = None,
     compute_perplexity: bool = True,
     compute_toxicity: bool = True,
-    model_id: str = "gpt2-medium",
+    compute_diversity: bool = True,
+    model_name: str = "gpt2-xl",
     sample_perplexity: Optional[int] = 1000,
     stride: int = 512,
     threshold: float = 0.5,
-    full_sequences: bool = False,
 ):
     """Compute toxicity and perplexity metrics for prompted or unprompted generations.
 
@@ -286,20 +341,20 @@ def main(
             Defaults to True.
         compute_toxicity (bool, optional): Whether to compute toxicity metrics or not.
             Defaults to True.
-        model_id (str, optional): Which model to compute perplexity with.
+        compute_toxicity (bool, optional): Whether to compute diversity metrics or not.
+            Defaults to True.
+        model_name (str, optional): Which model to compute perplexity with.
             Defaults to "gpt2-medium".
         sample_perplexity (int, optional): The amount of prompt samples to
             from each toxicity condition to compute perplexity.
             If None, computes for all samples.
             Defaults to None.
         stride (int, optional): Stride to compute perplexity. It usually is the model's
-            maximum sequence lenght of a model.
+            maximum sequence length of a model.
             Defaults to 512. More details on:
             https://www.reddit.com/r/MachineLearning/comments/oye64h/r_struggling_to_reproduce_perplexity_benchmarks/
         threshold (float, optional): Toxicity threshold.
             If higher than `threshold`, the text is toxic. Defaults to 0.5.
-        full_sequences (bool, optional): To compute perplexity on joint prompt
-            and continuations or not. Defaults to False.
 
     """
     for path, prompted in zip([unprompted_json, prompted_json], [False, True]):
@@ -327,14 +382,23 @@ def main(
                 )
                 compute_ppl(
                     df,
-                    model_id,
+                    model_name,
                     output_file,
                     prompted=prompted,
                     sample_perplexity=sample_perplexity,
                     stride=stride,
                     threshold=threshold,
                     full_sequences=full_sequences,
+                    ppl_as_dexperts=ppl_as_dexperts,
                 )
+
+            if compute_diversity:
+                output_file = structure_output_filepath(
+                    step="diversity",
+                    previous_filename=path,
+                )
+                if prompted:
+                    compute_distinctness(df, output_file)
 
 
 if __name__ == "__main__":
