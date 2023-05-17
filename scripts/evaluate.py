@@ -285,10 +285,16 @@ def compute_ppl(
     }
 
     ppl = {}
+    previous_shapes = {}
     if prompted:
         for condition, query in prompt_conditions.items():
             condition_df = pd.json_normalize(df.prompt).query(query)
             condition_df = condition_df[condition_df["toxicity"].notna()]
+
+            if any(condition_df.shape[0] == shape for condition, shape in previous_shapes.items()):
+                print(f"Condition {condition} df has the same shape as a previous one. Skipping.")
+                continue
+            previous_shapes[condition] = condition_df.shape[0]
 
             if sample_perplexity and condition_df.shape[0] >= sample_perplexity:
                 condition_df = condition_df.sample(sample_perplexity, random_state=42)
@@ -344,7 +350,7 @@ def main(
         compute_toxicity (bool, optional): Whether to compute diversity metrics or not.
             Defaults to True.
         model_name (str, optional): Which model to compute perplexity with.
-            Defaults to "gpt2-medium".
+            Defaults to "gpt2-xl".
         sample_perplexity (int, optional): The amount of prompt samples to
             from each toxicity condition to compute perplexity.
             If None, computes for all samples.

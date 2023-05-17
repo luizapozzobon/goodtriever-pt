@@ -73,6 +73,7 @@ class KNNArguments:
     knn_sim_func: DIST.from_string = field(default=DIST.l2)
     lmbda: float = field(default=0.5)
     k: int = field(default=1024)
+    other_k: int = field(default=None)
     knn_temp: float = field(default=100)
     # Args for building the faiss index:
     build_index: bool = field(default=False)

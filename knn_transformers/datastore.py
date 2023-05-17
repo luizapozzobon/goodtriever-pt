@@ -202,6 +202,7 @@ class Datastore:
                 size=[min(1000000, self.dstore_vals.shape[0])],
                 replace=False,
             )
+            logger.info(f"Training samples: {random_sample.shape[0]}")
             start = time.time()
             # Faiss does not handle adding keys in fp16 as of writing this.
             index.train(self.dstore_keys[random_sample].astype(np.float32))
@@ -244,12 +245,16 @@ class Datastore:
             mode = "w+"
             Path(keys_filename).parent.mkdir(parents=True, exist_ok=True)
 
+        start = time.time()
         self.dstore_keys = np.memmap(
             keys_filename, dtype=np.float16, mode=mode, shape=(self.dstore_size, self.dimension)
         )
+        end = time.time()
+        logger.info(f"Loading keys took {end - start} s")
         self.dstore_vals = np.memmap(
             vals_filename, dtype=np.int32, mode=mode, shape=(self.dstore_size, 1)
         )
+        logger.info(f"Loading vals took {time.time() - end} s")
         return self
 
     def get_dstore_size(self):

@@ -1,5 +1,4 @@
 import logging
-import warnings
 from enum import Enum, auto
 
 import numpy as np
@@ -50,6 +49,7 @@ class KNNWrapper(object):
         knn_gpu=True,
         recompute_dists=False,
         k=1024,
+        other_k=None,
         lmbda=0.25,
         knn_temp=1.0,
         probe=32,
@@ -62,6 +62,7 @@ class KNNWrapper(object):
         self.flat_index = flat_index
         self.lmbda = lmbda
         self.k = k
+        self.other_k = other_k or k
         self.knn_temperature = knn_temp
         self.probe = probe
 
@@ -206,7 +207,7 @@ class KNNWrapper(object):
         if self.other_datastore is not None:
             if self.method == METHODS.ensemble:
                 dists, knns = self.other_datastore.get_knns(
-                    queries, k=self.k, recompute_dists=self.recompute_dists
+                    queries, k=self.other_k, recompute_dists=self.recompute_dists
                 )  # (nonpad batch * time, k)
                 neg_dists = -dists
                 other_knn_log_probs, _ = self.other_datastore.knns_to_log_prob(
@@ -428,6 +429,9 @@ class KNNSaver(object):
             raise ex
 
         self.dstore_idx += batch_time_size
+
+        if self.dstore_idx >= self.dstore_size:
+            logger.info(f"Datastore is full: {self.dstore_idx}/{self.dstore_size}")
 
         return output
 
