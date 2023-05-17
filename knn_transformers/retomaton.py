@@ -14,7 +14,7 @@ from itertools import zip_longest
 
 from tqdm import tqdm
 
-from knnlm import KNNWrapper, get_dstore_path
+from knn_transformers.knnlm import KNNWrapper, get_dstore_path
 
 import faiss
 import faiss.contrib.torch_utils

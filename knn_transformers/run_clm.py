@@ -33,8 +33,6 @@ import datasets
 import torch
 import transformers
 from datasets import load_dataset
-from knnlm import DIST, KEY_TYPE, KNNSaver, KNNWrapper
-from retomaton import RetomatonWrapper
 from tqdm import tqdm
 from transformers import (
     CONFIG_MAPPING,
@@ -53,6 +51,9 @@ from transformers.testing_utils import CaptureLogger
 from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
+
+from knn_transformers.knnlm import DIST, KEY_TYPE, KNNSaver, KNNWrapper
+from knn_transformers.retomaton import RetomatonWrapper
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.11.0.dev0")
@@ -635,7 +636,6 @@ def main():
         )
     elif knn_args.knn:
         knn_wrapper = KNNWrapper(
-            dstore_size=knn_args.dstore_size,
             dstore_dir=knn_args.dstore_dir,
             dimension=dimension,
             flat_index=knn_args.flat_index,
