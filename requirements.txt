@@ -27,8 +27,15 @@ backoff==2.2.1
     # via cohere
 black==22.12.0
     # via -r requirements.in
+blis==0.7.9
+    # via thinc
 cachetools==5.3.0
     # via google-auth
+catalogue==2.0.8
+    # via
+    #   spacy
+    #   srsly
+    #   thinc
 certifi==2022.12.7
     # via requests
 chardet==4.0.0
@@ -39,14 +46,22 @@ click==8.1.3
     # via
     #   black
     #   nomic
+    #   typer
 cohere==4.0.0
     # via nomic
 comm==0.1.2
     # via ipykernel
+confection==0.0.4
+    # via thinc
 contourpy==1.0.7
     # via matplotlib
 cycler==0.11.0
     # via matplotlib
+cymem==2.0.7
+    # via
+    #   preshed
+    #   spacy
+    #   thinc
 datasets==2.9.0
     # via -r requirements.in
 debugpy==1.6.6
@@ -59,6 +74,7 @@ dill==0.3.6
     # via
     #   datasets
     #   multiprocess
+    #   pandarallel
 exceptiongroup==1.1.0
     # via pytest
 executing==1.2.0
@@ -136,6 +152,8 @@ isort==5.11.4
     # via -r requirements.in
 jedi==0.18.2
     # via ipython
+jinja2==3.1.2
+    # via spacy
 joblib==1.2.0
     # via -r requirements.in
 jsonlines==3.1.0
@@ -148,6 +166,8 @@ jupyterlab-widgets==3.0.5
     # via ipywidgets
 kiwisolver==1.4.4
     # via matplotlib
+langcodes==3.3.0
+    # via spacy
 loguru==0.6.0
     # via nomic
 markdown==3.4.1
@@ -155,7 +175,9 @@ markdown==3.4.1
 markdown-it-py==2.2.0
     # via rich
 markupsafe==2.1.2
-    # via werkzeug
+    # via
+    #   jinja2
+    #   werkzeug
 matplotlib==3.6.3
     # via
     #   -r requirements.in
@@ -175,6 +197,11 @@ multidict==6.0.4
     #   yarl
 multiprocess==0.70.14
     # via datasets
+murmurhash==1.0.9
+    # via
+    #   preshed
+    #   spacy
+    #   thinc
 mypy-extensions==0.4.3
     # via black
 nest-asyncio==1.5.6
@@ -183,6 +210,7 @@ nomic==1.0.46
     # via -r requirements.in
 numpy==1.24.1
     # via
+    #   blis
     #   contourpy
     #   datasets
     #   matplotlib
@@ -191,7 +219,9 @@ numpy==1.24.1
     #   pyarrow
     #   scipy
     #   seaborn
+    #   spacy
     #   tensorboard
+    #   thinc
     #   transformers
     #   wordcloud
 nvidia-cublas-cu11==11.10.3.66
@@ -213,16 +243,23 @@ packaging==23.0
     #   ipykernel
     #   matplotlib
     #   pytest
+    #   spacy
+    #   thinc
     #   transformers
+pandarallel==1.6.5
+    # via -r requirements.in
 pandas==1.5.3
     # via
     #   -r requirements.in
     #   datasets
+    #   pandarallel
     #   seaborn
 parso==0.8.3
     # via jedi
 pathspec==0.10.3
     # via black
+pathy==0.10.1
+    # via spacy
 pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
@@ -237,6 +274,10 @@ platformdirs==2.6.2
     #   jupyter-core
 pluggy==1.0.0
     # via pytest
+preshed==3.0.8
+    # via
+    #   spacy
+    #   thinc
 prompt-toolkit==3.0.36
     # via ipython
 protobuf==3.20.3
@@ -248,6 +289,7 @@ psutil==5.9.4
     # via
     #   -r requirements.in
     #   ipykernel
+    #   pandarallel
 ptyprocess==0.7.0
     # via pexpect
 pure-eval==0.2.2
@@ -265,7 +307,11 @@ pyasn1-modules==0.2.8
 pycodestyle==2.10.0
     # via flake8
 pydantic==1.10.6
-    # via nomic
+    # via
+    #   confection
+    #   nomic
+    #   spacy
+    #   thinc
 pyflakes==3.0.1
     # via flake8
 pygments==2.14.0
@@ -306,6 +352,7 @@ requests==2.28.2
     #   nomic
     #   requests-oauthlib
     #   responses
+    #   spacy
     #   tensorboard
     #   transformers
 requests-oauthlib==1.3.1
@@ -326,6 +373,21 @@ six==1.16.0
     #   fire
     #   google-auth
     #   python-dateutil
+smart-open==6.3.0
+    # via
+    #   pathy
+    #   spacy
+spacy==3.5.3
+    # via -r requirements.in
+spacy-legacy==3.0.12
+    # via spacy
+spacy-loggers==1.0.4
+    # via spacy
+srsly==2.4.6
+    # via
+    #   confection
+    #   spacy
+    #   thinc
 stack-data==0.6.2
     # via ipython
 tensorboard==2.11.2
@@ -336,6 +398,8 @@ tensorboard-plugin-wit==1.8.1
     # via tensorboard
 termcolor==2.2.0
     # via fire
+thinc==8.1.10
+    # via spacy
 tokenizers==0.13.2
     # via transformers
 tomli==2.0.1
@@ -356,6 +420,7 @@ tqdm==4.64.1
     #   datasets
     #   huggingface-hub
     #   nomic
+    #   spacy
     #   transformers
 traitlets==5.8.1
     # via
@@ -368,6 +433,10 @@ traitlets==5.8.1
     #   matplotlib-inline
 transformers[torch]==4.25.1
     # via -r requirements.in
+typer==0.7.0
+    # via
+    #   pathy
+    #   spacy
 typing-extensions==4.4.0
     # via
     #   aiohttp
@@ -380,6 +449,10 @@ urllib3==1.26.14
     # via
     #   requests
     #   responses
+wasabi==1.1.1
+    # via
+    #   spacy
+    #   thinc
 wcwidth==0.2.6
     # via prompt-toolkit
 werkzeug==2.2.2
