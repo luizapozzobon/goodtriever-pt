@@ -330,12 +330,13 @@ class KNNWrapper(object):
 
 
 class KNNSaver(object):
-    def __init__(self, dstore_size, dstore_dir, dimension, knn_keytype=None, flat_index=False):
+    def __init__(self, dstore_size, dstore_dir, dimension, knn_keytype=None, flat_index=False, continue_writing=False):
         self.dstore_size = dstore_size
         self.dstore_dir = dstore_dir
         self.dimension = dimension
         self.flat_index = flat_index
         self.knn_keytype = KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
+        self.continue_writing = continue_writing
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -379,7 +380,14 @@ class KNNSaver(object):
             device=self.device,
             flat_index=self.flat_index,
             dstore_size=self.dstore_size,
+            continue_writing=self.continue_writing
         ).load_keys_and_vals()
+
+        # Update values after datastore loading
+        logger.info(f"dstore_size previous/current: {self.dstore_size}/{self.datastore.dstore_size}")
+        self.dstore_size = self.datastore.dstore_size
+        self.dstore_idx = self.datastore.largest_dstore_size or 0
+        logger.info(f"dstore_idx current: {self.dstore_idx}")
 
     def build_index(self):
         self.datastore.build_index()

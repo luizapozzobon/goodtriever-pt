@@ -248,6 +248,7 @@ class KNNArguments:
     # Args for building the faiss index:
     build_index: bool = field(default=False)
     flat_index: bool = field(default=False)
+    continue_writing: bool = field(default=False)
     # faiss_index: str = field(default="checkpoints/index")
     ncentroids: int = field(default=4096)
     code_size: int = field(default=64)
@@ -658,12 +659,17 @@ def main():
             probe=knn_args.probe,
         )
     elif knn_args.save_knnlm_dstore or knn_args.build_index:
+        if knn_args.build_index and not knn_args.save_knnlm_dstore:
+            knn_args.dstore_size = None
+            knn_args.continue_writing = False
+
         knn_wrapper = KNNSaver(
             dstore_size=knn_args.dstore_size,
             dstore_dir=knn_args.dstore_dir,
             dimension=dimension,
             flat_index=knn_args.flat_index,
             knn_keytype=knn_args.knn_keytype,
+            continue_writing=knn_args.continue_writing
         )
 
     if knn_wrapper is not None:
