@@ -56,9 +56,7 @@ class Datastore:
         self.continue_writing = continue_writing
 
         self.dstore_size = dstore_size or self.get_dstore_size()
-        self.largest_dstore_size = (
-            self.get_largest_dstore_size() if self.continue_writing else None
-        )
+        self.previous_dstore_size = self.get_dstore_size() if self.continue_writing else None
 
         self.index = None
         self.keys = None
@@ -186,8 +184,8 @@ class Datastore:
         code_size=64,
         probe=32,
     ):
-        if self.largest_dstore_size is not None and self._wrote_to_dstore:
-            if self.dstore_size != self.largest_dstore_size:
+        if self.previous_dstore_size is not None:
+            if self.dstore_size != self.previous_dstore_size:
                 raise RuntimeError(
                     "If training the index, disable `continue_writing` "
                     "or set `dstore_size` to None. Delete the datastores and start over."
@@ -265,34 +263,44 @@ class Datastore:
             vals_filename, dtype=np.int32, mode=mode, shape=(self.dstore_size, 1)
         )
 
-        if self.continue_writing is False or self.largest_dstore_size is None:
+        # If continual addition of tokens is not enabled or we found no
+        # previous dstore, the default behavior ir to just create/load the
+        # dstore with current `self.dstore_size`.
+        if self.continue_writing is False or self.previous_dstore_size is None:
             self.dstore_keys = dstore_keys
             self.dstore_vals = dstore_vals
             self._keys_path = keys_filename
-        elif self.continue_writing is True and self.largest_dstore_size is not None:
-            # Load latest dstore
-            latest_prefix = self.build_prefix(
+
+        # If continual learning is enabled, we should load previous datastores
+        # of `previous_dstore_size` and concatenate keys and values with
+        # the new memmaps of `dstore_size`.
+        elif self.continue_writing is True and self.previous_dstore_size is not None:
+            # Load previous dstore
+            previous_prefix = self.build_prefix(
                 "dstore",
                 self.dstore_dir,
                 self.model_type,
-                self.largest_dstore_size,
+                self.previous_dstore_size,
                 self.dimension,
             )
-            latest_keys_filename = f"{latest_prefix}_keys.npy"
-            latest_vals_filename = f"{latest_prefix}_vals.npy"
+            previous_keys_filename = f"{previous_prefix}_keys.npy"
+            previous_vals_filename = f"{previous_prefix}_vals.npy"
 
-            latest_keys = np.memmap(
-                latest_keys_filename,
+            previous_keys = np.memmap(
+                previous_keys_filename,
                 dtype=np.float16,
                 mode="r",
-                shape=(self.largest_dstore_size, self.dimension),
+                shape=(self.previous_dstore_size, self.dimension),
             )
-            latest_vals = np.memmap(
-                latest_vals_filename, dtype=np.int32, mode="r", shape=(self.largest_dstore_size, 1)
+            previous_vals = np.memmap(
+                previous_vals_filename,
+                dtype=np.int32,
+                mode="r",
+                shape=(self.previous_dstore_size, 1),
             )
 
             # Load memmapped dstore with actual size after merging
-            full_size = self.dstore_size + self.largest_dstore_size
+            full_size = self.dstore_size + self.previous_dstore_size
             merged_prefix = self.build_prefix(
                 "dstore", self.dstore_dir, self.model_type, full_size, self.dimension
             )
@@ -310,39 +318,55 @@ class Datastore:
             )
 
             # Fill values
-            self.dstore_keys[0 : self.largest_dstore_size] = latest_keys
-            self.dstore_keys[self.largest_dstore_size :] = dstore_keys
+            self.dstore_keys[0 : self.previous_dstore_size] = previous_keys
+            self.dstore_keys[self.previous_dstore_size :] = dstore_keys
 
-            self.dstore_vals[0 : self.largest_dstore_size] = latest_vals
-            self.dstore_vals[self.largest_dstore_size :] = dstore_vals
+            self.dstore_vals[0 : self.previous_dstore_size] = previous_vals
+            self.dstore_vals[self.previous_dstore_size :] = dstore_vals
 
-            del dstore_keys, dstore_vals, latest_keys, latest_vals
+            del dstore_keys, dstore_vals, previous_keys, previous_vals
 
             # Delete previous files
             os.remove(keys_filename)
             os.remove(vals_filename)
             try:
-                os.remove(latest_keys_filename)
-                os.remove(latest_vals_filename)
+                os.remove(previous_keys_filename)
+                os.remove(previous_vals_filename)
             except FileNotFoundError:
                 logger.debug("Are you trying to concatenate a file to itself?")
 
             # Clean indexes from the previous dstore size
             previous_index = Path(self.dstore_dir).glob(
-                f"index_{self.model_type}_{self.largest_dstore_size}*"
+                f"index_{self.model_type}_{self.previous_dstore_size}*"
             )
             for path in previous_index:
                 os.remove(path)
 
             logger.info(
-                f"Updated dstore_size from {self.largest_dstore_size} to {full_size} (+{self.dstore_size})."
+                f"Updated dstore_size from {self.previous_dstore_size} to {full_size} (+{self.dstore_size})."
             )
             self.dstore_size = full_size
             self._keys_path = merged_keys_filename
 
         return self
 
-    def get_largest_dstore_size(self):
+    def get_dstore_size(self, index=-1) -> int:
+        """Return a datastore size from datastores found.
+
+        Datastores names are sorted alphabetically, so they're expected
+        to follow smaller -> largest number of tokens. They're also in
+        pairs for each number of tokens (dstore keys and vals files).
+
+        Args:
+            index (int, optional): Index of datastore. Defaults to -1 (largest).
+
+        Raises:
+            ValueError: If `dstore_dir` does not exist.
+            RuntimeError: If the number of datastores in `dstore_dir` ir not even.
+
+        Returns:
+            int: The size of the datastore in the index.
+        """
         if not Path(self.dstore_dir).exists():
             raise ValueError(f"dstore_dir {self.dstore_dir} does not exist.")
 
@@ -355,12 +379,9 @@ class Datastore:
             raise RuntimeError("There should be a pair value of dstores in folder.")
 
         pattern = r"(?<=_)\d+(?=_)"
-        largest_size = int(re.findall(pattern, dstores[-1].stem)[0])
-
-        return largest_size
-
-    def get_dstore_size(self):
-        return self.get_largest_dstore_size()
+        # idx 0 = dstore size, idx 1 = dimension
+        size = int(re.findall(pattern, dstores[index].stem)[0])
+        return size
 
     @staticmethod
     def build_prefix(base, dstore_dir, model_type, dstore_size, dimension, flat=False):
