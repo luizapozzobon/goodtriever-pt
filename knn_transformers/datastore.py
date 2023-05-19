@@ -186,7 +186,7 @@ class Datastore:
         code_size=64,
         probe=32,
     ):
-        if self.largest_dstore_size is not None:
+        if self.largest_dstore_size is not None and self._wrote_to_dstore:
             if self.dstore_size != self.largest_dstore_size:
                 raise RuntimeError(
                     "If training the index, disable `continue_writing` "
@@ -326,6 +326,13 @@ class Datastore:
                 os.remove(latest_vals_filename)
             except FileNotFoundError:
                 logger.debug("Are you trying to concatenate a file to itself?")
+
+            # Clean indexes from the previous dstore size
+            previous_index = Path(self.dstore_dir).glob(
+                f"index_{self.model_type}_{self.largest_dstore_size}*"
+            )
+            for path in previous_index:
+                os.remove(path)
 
             logger.info(
                 f"Updated dstore_size from {self.largest_dstore_size} to {full_size} (+{self.dstore_size})."

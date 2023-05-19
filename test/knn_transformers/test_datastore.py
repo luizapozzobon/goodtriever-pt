@@ -6,6 +6,7 @@ import pytest
 
 
 def test_datastore_continual_add():
+    """Test if continual addition of dstore keys/vals works as expected."""
     with tempfile.TemporaryDirectory() as dstore_dir:
         # Test continual add
         size = 1000
@@ -105,3 +106,49 @@ def test_datastore_continual_add():
 
         with pytest.raises(RuntimeError):
             datastore.build_index()
+
+
+def test_files_removal():
+    """Test if previous index and dstore files are removed correctly."""
+    with tempfile.TemporaryDirectory() as dstore_dir:
+        dstore_dir = Path(dstore_dir)
+        size = 1000
+        datastore = Datastore(
+            dstore_dir=dstore_dir,
+            dimension=10,
+            model_type="model",
+            device="cuda",
+            flat_index=False,
+            continue_writing=True,
+            dstore_size=size,
+        ).load_keys_and_vals()
+        datastore.dstore_keys[:] = 1
+        datastore.build_index(
+            num_keys_to_add_at_a_time=1000000,
+            ncentroids=1,
+            seed=1,
+            code_size=1,
+            probe=1,
+        )
+        del datastore
+
+        dstores = list(dstore_dir.glob("dstore_*"))
+        assert len(dstores) == 2, "More than two files starting with `dstore` found."
+
+        size = 500
+        datastore = Datastore(
+            dstore_dir=dstore_dir,
+            dimension=10,
+            model_type="model",
+            device="cuda",
+            flat_index=False,
+            continue_writing=True,
+            dstore_size=size,
+        ).load_keys_and_vals()
+        datastore.dstore_keys[:] = 2
+        datastore.continue_writing = False
+
+        dstores = list(dstore_dir.glob("dstore_*"))
+        assert len(dstores) == 2, "More than two files starting with `dstore` found."
+        indexes = list(dstore_dir.glob("index_*"))
+        assert len(indexes) == 0, "Index file from the previous datastore was not deleted."
