@@ -394,8 +394,6 @@ def main(
                     sample_perplexity=sample_perplexity,
                     stride=stride,
                     threshold=threshold,
-                    full_sequences=full_sequences,
-                    ppl_as_dexperts=ppl_as_dexperts,
                 )
 
             if compute_diversity:

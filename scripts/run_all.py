@@ -117,9 +117,9 @@ def main(
         prompted_json=prompted_json,
         compute_perplexity=True,
         compute_toxicity=True,
-        model_id=perplexity_model,
+        compute_diversity=True,
+        model_name=perplexity_model,
         sample_perplexity=sample_perplexity,
-        ppl_as_dexperts=True,
     )
     logger.info(f"Evaluation took {time.time() - start:.2f} seconds.")
 
