@@ -2,6 +2,7 @@ import gc
 import logging
 import time
 from pathlib import Path
+from typing import Optional
 
 import fire
 import numpy as np
@@ -20,6 +21,7 @@ def main(
     perplexity_model: str = "gpt2-xl",
     collate_chunksize: int = int(1e5),
     sample_perplexity: int = 1000,
+    group_toxicity_by: Optional[str] = None,
 ) -> None:
     """Run full pipeline: generate, score, collate and evaluate.
 
@@ -38,6 +40,10 @@ def main(
         sample_perplexity (int, optional): Used in the evaluate script.
             Number of prompts to compute perplexity for.
             Defaults to 1000.
+        group_toxicity_by (str, optional): Column to group toxicity results by
+            (i.e. a column containing different classes of interest). Only
+            possible for prompted generation. Classes should be present in the
+            `prompts` file. Defaults to None.
 
     Raises:
         ValueError: Raised if input file for evaluation does not contain
@@ -120,6 +126,7 @@ def main(
         compute_diversity=True,
         model_name=perplexity_model,
         sample_perplexity=sample_perplexity,
+        group_toxicity_by=group_toxicity_by,
     )
     logger.info(f"Evaluation took {time.time() - start:.2f} seconds.")
 

@@ -34,6 +34,7 @@ def main(
     experiment_name: str = "continual_mitigation",
     filename_format: str = "wilds_single_identity_{domain}_{toxicity}.json",
     rate_limit: str = 90,
+    group_toxicity_by: str = "domain",
 ):
     train_folder = Path(train_folder)
 
@@ -120,6 +121,7 @@ def main(
                 --knn_temp 100 \
                 --method ensemble \
                 --num_prompts 100 \
+                --group_toxicity_by {group_toxicity_by} \
                 --batch_size 4
         """
 
