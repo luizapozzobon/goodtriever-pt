@@ -112,6 +112,7 @@ class KNNWrapper(object):
             no_load_keys=self.no_load_keys,
             flat_index=self.flat_index,
         ).setup_faiss()
+        logger.info(f"`dstore_size`: {self.datastore.dstore_size}")
 
         self.other_datastore = None
         if self.other_dstore_dir is not None:
@@ -127,7 +128,7 @@ class KNNWrapper(object):
                 no_load_keys=self.no_load_keys,
                 flat_index=self.flat_index,
             ).setup_faiss()
-            logger.info("Using `other_dstore_dir`.")
+            logger.info(f"Using `other_dstore_dir`. Size: {self.other_datastore.dstore_size}")
 
     def break_into(self, model):
         self.model = model
