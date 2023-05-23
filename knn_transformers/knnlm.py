@@ -386,7 +386,7 @@ class KNNSaver(object):
         # Update values after datastore loading
         logger.info(f"dstore_size previous/current: {self.dstore_size}/{self.datastore.dstore_size}")
         self.dstore_size = self.datastore.dstore_size
-        self.dstore_idx = self.datastore.largest_dstore_size or 0
+        self.dstore_idx = self.datastore.previous_dstore_size or 0
         logger.info(f"dstore_idx current: {self.dstore_idx}")
 
     def build_index(self):
