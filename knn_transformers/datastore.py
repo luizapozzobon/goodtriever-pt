@@ -40,6 +40,7 @@ class Datastore:
         no_load_keys=False,
         dstore_size=None,
         flat_index=False,
+        continue_writing=False,
     ):
         self.dstore_dir = dstore_dir
         self.dimension = dimension
@@ -51,8 +52,11 @@ class Datastore:
         self.move_dstore_to_mem = move_dstore_to_mem
         self.probe = probe
         self.no_load_keys = no_load_keys
-        self.dstore_size = dstore_size or self.get_dstore_size()
         self.flat_index = flat_index
+        self.continue_writing = continue_writing
+
+        self.dstore_size = dstore_size or self.get_dstore_size()
+        self.previous_dstore_size = self.get_dstore_size() if self.continue_writing else None
 
         self.index = None
         self.keys = None
@@ -180,6 +184,12 @@ class Datastore:
         code_size=64,
         probe=32,
     ):
+        if self.previous_dstore_size is not None:
+            if self.dstore_size != self.previous_dstore_size:
+                raise RuntimeError(
+                    "If training the index, disable `continue_writing` "
+                    "or set `dstore_size` to None. Delete the datastores and start over."
+                )
         logger.info("Building index")
         index_name = self.get_index_path()
 
@@ -210,6 +220,7 @@ class Datastore:
 
         logger.info("Adding Keys")
         # index = faiss.read_index(f'{index_name}.trained')
+        # TODO Could this be enhanced for continual learning to be faster?
         start = 0
         start_time = time.time()
         while start < self.dstore_size:
@@ -245,36 +256,154 @@ class Datastore:
             mode = "w+"
             Path(keys_filename).parent.mkdir(parents=True, exist_ok=True)
 
-        start = time.time()
-        self.dstore_keys = np.memmap(
+        dstore_keys = np.memmap(
             keys_filename, dtype=np.float16, mode=mode, shape=(self.dstore_size, self.dimension)
         )
-        end = time.time()
-        logger.info(f"Loading keys took {end - start} s")
-        self.dstore_vals = np.memmap(
+        dstore_vals = np.memmap(
             vals_filename, dtype=np.int32, mode=mode, shape=(self.dstore_size, 1)
         )
-        logger.info(f"Loading vals took {time.time() - end} s")
+
+        # If continual addition of tokens is not enabled or we found no
+        # previous dstore, the default behavior ir to just create/load the
+        # dstore with current `self.dstore_size`.
+        if self.continue_writing is False or self.previous_dstore_size is None:
+            self.dstore_keys = dstore_keys
+            self.dstore_vals = dstore_vals
+            self._keys_path = keys_filename
+
+        # If continual learning is enabled, we should load previous datastores
+        # of `previous_dstore_size` and concatenate keys and values with
+        # the new memmaps of `dstore_size`.
+        elif self.continue_writing is True and self.previous_dstore_size is not None:
+            # Load previous dstore
+            previous_prefix = self.build_prefix(
+                "dstore",
+                self.dstore_dir,
+                self.model_type,
+                self.previous_dstore_size,
+                self.dimension,
+            )
+            previous_keys_filename = f"{previous_prefix}_keys.npy"
+            previous_vals_filename = f"{previous_prefix}_vals.npy"
+
+            previous_keys = np.memmap(
+                previous_keys_filename,
+                dtype=np.float16,
+                mode="r",
+                shape=(self.previous_dstore_size, self.dimension),
+            )
+            previous_vals = np.memmap(
+                previous_vals_filename,
+                dtype=np.int32,
+                mode="r",
+                shape=(self.previous_dstore_size, 1),
+            )
+
+            # Load memmapped dstore with actual size after merging
+            full_size = self.dstore_size + self.previous_dstore_size
+            merged_prefix = self.build_prefix(
+                "dstore", self.dstore_dir, self.model_type, full_size, self.dimension
+            )
+            merged_keys_filename = f"{merged_prefix}_keys.npy"
+            merged_vals_filename = f"{merged_prefix}_vals.npy"
+
+            self.dstore_keys = np.memmap(
+                merged_keys_filename,
+                dtype=np.float16,
+                mode="w+",
+                shape=(full_size, self.dimension),
+            )
+            self.dstore_vals = np.memmap(
+                merged_vals_filename, dtype=np.int32, mode="w+", shape=(full_size, 1)
+            )
+
+            # Fill values
+            self.dstore_keys[0 : self.previous_dstore_size] = previous_keys
+            self.dstore_keys[self.previous_dstore_size :] = dstore_keys
+
+            self.dstore_vals[0 : self.previous_dstore_size] = previous_vals
+            self.dstore_vals[self.previous_dstore_size :] = dstore_vals
+
+            del dstore_keys, dstore_vals, previous_keys, previous_vals
+
+            # Delete previous files
+            os.remove(keys_filename)
+            os.remove(vals_filename)
+            try:
+                os.remove(previous_keys_filename)
+                os.remove(previous_vals_filename)
+            except FileNotFoundError:
+                logger.debug("Are you trying to concatenate a file to itself?")
+
+            # Clean indexes from the previous dstore size
+            previous_index = Path(self.dstore_dir).glob(
+                f"index_{self.model_type}_{self.previous_dstore_size}*"
+            )
+            for path in previous_index:
+                os.remove(path)
+
+            logger.info(
+                f"Updated dstore_size from {self.previous_dstore_size} to {full_size} (+{self.dstore_size})."
+            )
+            self.dstore_size = full_size
+            self._keys_path = merged_keys_filename
+
         return self
 
-    def get_dstore_size(self):
+    def get_dstore_size(self, index=-1) -> int:
+        """Return a datastore size from datastores found.
+
+        Datastores names are sorted alphabetically, so they're expected
+        to follow smaller -> largest number of tokens. They're also in
+        pairs for each number of tokens (dstore keys and vals files).
+
+        Args:
+            index (int, optional): Index of datastore. Defaults to -1 (largest).
+
+        Raises:
+            ValueError: If `dstore_dir` does not exist.
+            RuntimeError: If the number of datastores in `dstore_dir` ir not even.
+
+        Returns:
+            int: The size of the datastore in the index.
+        """
         if not Path(self.dstore_dir).exists():
             raise ValueError(f"dstore_dir {self.dstore_dir} does not exist.")
 
-        strings = [str(p) for p in Path(self.dstore_dir).glob("dstore_*")]
+        dstores = sorted(list(Path(self.dstore_dir).glob("dstore_*")))
 
-        if len(strings) != 2:
-            raise ValueError(
-                "There should be two dstore files in `dstore_dir`:"
-                " one for keys and other for values."
-            )
+        if not dstores:
+            return None
+
+        if len(dstores) % 2 != 0:
+            raise RuntimeError("There should be a pair value of dstores in folder.")
 
         pattern = r"(?<=_)\d+(?=_)"
-        matches = re.findall(pattern, strings[0])
-        return int(matches[0])  # first match is the dstore size, second is the dimension
+        # idx 0 = dstore size, idx 1 = dimension
+        size = int(re.findall(pattern, dstores[index].stem)[0])
+        return size
+
+    @staticmethod
+    def build_prefix(base, dstore_dir, model_type, dstore_size, dimension, flat=False):
+        prefix = f"{dstore_dir}/{base}_{model_type}_{dstore_size}_{dimension}"
+
+        if base == "index" and flat:
+            prefix = f"{prefix}{'_flat' if flat else ''}"
+
+        return prefix
 
     def get_dstore_path(self):
-        return f"{self.dstore_dir}/dstore_{self.model_type}_{self.dstore_size}_{self.dimension}"
+        return self.build_prefix(
+            "dstore", self.dstore_dir, self.model_type, self.dstore_size, self.dimension
+        )
 
     def get_index_path(self):
-        return f"{self.dstore_dir}/index_{self.model_type}_{self.dstore_size}_{self.dimension}{'_flat' if self.flat_index else ''}.indexed"
+        prefix = self.build_prefix(
+            "index",
+            self.dstore_dir,
+            self.model_type,
+            self.dstore_size,
+            self.dimension,
+            flat=self.flat_index,
+        )
+        return f"{prefix}.indexed"

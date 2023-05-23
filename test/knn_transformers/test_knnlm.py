@@ -130,8 +130,8 @@ def test_ensemble(lm_logits, toxic_logits, nontoxic_logits, lmbda=2.0):
         probs_toxic_ds[idx] > probs_toxic_ds[1]
     ), "Mixed token should higher prob than toxic token after ensemble with toxic ds."
     assert (
-        probs_nontoxic_ds[idx] > probs_nontoxic_ds[1]
-    ), "Mixed token should higher prob than toxic token after ensemble with nontoxic ds."
+        probs_nontoxic_ds[0] > probs_nontoxic_ds[idx]
+    ), "Non-toxic token should higher prob than mixed token after ensemble with nontoxic ds."
     assert (
         probs_both_ds[idx] > probs_both_ds[1]
     ), "Mixed token should higher prob than toxic token after ensemble with both ds."
