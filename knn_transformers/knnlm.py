@@ -54,6 +54,7 @@ class KNNWrapper(object):
         lmbda=0.25,
         knn_temp=1.0,
         probe=32,
+        filter_p=0,
         method="interpolate",
         other_dstore_dir=None,
     ):
@@ -66,6 +67,7 @@ class KNNWrapper(object):
         self.other_k = other_k or k
         self.knn_temperature = knn_temp
         self.probe = probe
+        self.filter_p = filter_p
 
         self.knn_sim_func = DIST.l2 if knn_sim_func is None else knn_sim_func
         self.knn_keytype = KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
@@ -167,6 +169,12 @@ class KNNWrapper(object):
         shift = 0 if self.is_encoder_decoder else 1
         lm_logits = output
         lm_logits = torch.nn.functional.log_softmax(lm_logits, dim=-1)  # (batch, time, vocab)
+
+        # From DExperts - adding this reduced perplexity a bit.
+        if self.filter_p:
+            for i, logits in enumerate(lm_logits):
+                lm_logits[i] = top_k_top_p_filtering(logits, top_p=self.filter_p)
+
         queries = self.activation_capturer.captured  # (batch, time, dim)
 
         if self.labels is None:

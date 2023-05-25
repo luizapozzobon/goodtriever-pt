@@ -90,6 +90,7 @@ class KNNArguments:
     no_load_keys: bool = field(default=True)
     recompute_dists: bool = field(default=False)
     method: str = field(default="interpolation")
+    filter_p: float = field(default=0.9)
 
     ## RetoMaton args:
     retomaton: bool = field(default=False)

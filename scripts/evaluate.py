@@ -186,7 +186,7 @@ def compute_toxicity_prompted(
         res[label] = compute_toxicity(subdf)
 
         # Toxicity stratified by another column
-        if group_toxicity_by is not None:
+        if group_toxicity_by is not None and group_toxicity_by in subdf:
             domains = sorted(subdf[group_toxicity_by].unique())
             for domain in domains:
                 subdf_domain = subdf[subdf[group_toxicity_by] == domain]
@@ -197,7 +197,7 @@ def compute_toxicity_prompted(
     res = pd.DataFrame(res)
     res.to_csv(output_file)
 
-    if group_toxicity_by is not None:
+    if group_toxicity_by is not None and group_toxicity_by in subdf:
         res_groupby = pd.DataFrame(res_groupby)
         res_groupby.to_csv(output_file.parent / (output_file.stem + "_groupby.csv"))
 
