@@ -19,8 +19,10 @@ class DExpertsWrapper(KNNWrapper):
         antiexpert_model: Union[str, Path, GPT2PreTrainedModel] = None,
         expert_model: Union[str, Path, GPT2PreTrainedModel] = None,
         alpha: int = 2.0,
+        filter_p: float = 0.9
     ):
         self.alpha = alpha
+        self.filter_p = filter_p
         self.knn_keytype = KEY_TYPE.last_ffn_input
         self.hook_handles = []
 
@@ -88,8 +90,9 @@ class DExpertsWrapper(KNNWrapper):
         expert_logits, antiexpert_logits = self.expert_logits, self.antiexpert_logits
 
         lm_logits = torch.nn.functional.log_softmax(lm_logits, dim=-1)  # (batch, time, vocab)
-        for i, logits in enumerate(lm_logits):
-            lm_logits[i] = top_k_top_p_filtering(logits, top_p=0.9)
+        if self.filter_p:
+            for i, logits in enumerate(lm_logits):
+                lm_logits[i] = top_k_top_p_filtering(logits, top_p=self.filter_p)
 
         if self.labels is None:
             nonpad_mask = torch.cat(

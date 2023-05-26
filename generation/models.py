@@ -42,6 +42,7 @@ def setup_model(model_name: str, knn_args):
             antiexpert_model=knn_args.dstore_dir,
             expert_model=knn_args.other_dstore_dir,
             alpha=knn_args.lmbda,
+            filter_p=knn_args.filter_p,
         )
 
     if wrapper is not None:
