@@ -116,7 +116,10 @@ class DExpertsWrapper(KNNWrapper):
 
         new_scores = self.ensemble(
             lm_logits,
-            *(antiexpert_logits, expert_logits),
+            *(
+                antiexpert_logits if antiexpert_logits is not None else lm_logits,
+                expert_logits if expert_logits is not None else lm_logits,
+            ),
             lmbda=self.alpha,
             patch=False,
         )
