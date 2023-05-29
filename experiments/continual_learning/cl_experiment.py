@@ -1,10 +1,12 @@
 import logging
 import subprocess
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 from typing import Optional, Tuple
 
 import fire
+import pandas as pd
 
 from experiments.continual_learning.utils import (
     evaluate,
@@ -148,6 +150,7 @@ def main(
     pretrained_nontoxic: Optional[str] = None,
     dstore_size: Optional[int] = None,
     num_prompts: Optional[int] = None,
+    multitask: Optional[bool] = False,
 ):
     # Folder setup
     output_folder = setup_output_folder(
@@ -157,6 +160,11 @@ def main(
         model_name,
         kind,
     )
+    if multitask:
+        multitask_files = {
+            "toxic": tempfile.NamedTemporaryFile(suffix=".json", mode="w+"),
+            "nontoxic": tempfile.NamedTemporaryFile(suffix=".json", mode="w+"),
+        }
 
     # Logger setup
     (output_folder / "logs").mkdir(parents=True, exist_ok=True)
@@ -195,6 +203,22 @@ def main(
 
                 file = [f for f in files[toxicity] if domain in str(f)][0]
 
+                if multitask:
+                    curr_df = pd.read_json(file)
+                    logger.info(f"Current number of samples: {curr_df.shape[0]}")
+
+                    if d > 0:
+                        previous_df = pd.read_json(multitask_files[toxicity].name)
+                        logger.info(f"Previously saved number of samples: {previous_df.shape[0]}")
+                        curr_df = pd.concat([previous_df, curr_df], axis=0)
+                        curr_df = curr_df.reset_index(drop=True)
+                        logger.info(f"New number of samples: {curr_df.shape[0]}")
+
+                    curr_df.to_json(multitask_files[toxicity].name, orient="records")
+                    # Read file with appended data instead of unique domain ones
+                    file = multitask_files[toxicity].name
+
+                # We have to run even if done=True to get the dstore/model path
                 model_path = output_folder / f"domain={d}-{domain}/checkpoints/{toxicity}"
                 if kind == "knn":
                     path = build_dstore(
