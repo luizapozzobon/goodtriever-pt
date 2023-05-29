@@ -17,17 +17,23 @@ logger = logging.getLogger(__name__)
 
 
 def build_dstore(
-    output_folder, train_file, model_name, toxicity, pretrained_path, dstore_size=None, done=False
+    output_folder,
+    train_file,
+    model_name,
+    toxicity,
+    dstore_size=None,
+    pretrained_path=None,
+    done=False,
+    log_folder="logs",
 ):
-    dstore_path = output_folder / f"checkpoints/{model_name}_cl/{toxicity}"
-    dstore_path.mkdir(exist_ok=True, parents=True)
+    output_folder.mkdir(exist_ok=True, parents=True)
 
     if done:
-        return dstore_path
+        return output_folder
 
     if pretrained_path is not None:
-        logger.info(f"Copying base {toxicity} dstore from {pretrained_path} to {dstore_path}.")
-        subprocess.run(f"cp -r {pretrained_path}/* {dstore_path}/", shell=True)
+        logger.info(f"Copying base {toxicity} dstore from {pretrained_path} to {output_folder}.")
+        subprocess.run(f"cp -r {pretrained_path}/* {output_folder}/", shell=True)
         logger.info(f"Base {toxicity} dstore copied.")
 
     ds_cmd = f"""
@@ -35,12 +41,12 @@ def build_dstore(
             --model_name_or_path {model_name} \
             --train_file {train_file} \
             --eval_subset train \
-            --output_dir {dstore_path} \
-            --dstore_dir {dstore_path} \
+            --output_dir {output_folder} \
+            --dstore_dir {output_folder} \
             --save_knnlm_dstore \
             --continue_writing \
             {f'--dstore_size {dstore_size} --limit_eval_to_dstore' if dstore_size else ''} \
-            --do_eval | tee -a {output_folder / f"logs/build_dstore_{toxicity}.log"}
+            --do_eval | tee -a {log_folder}
     """
 
     train_cmd = f"""
@@ -48,10 +54,10 @@ def build_dstore(
             --model_name_or_path {model_name} \
             --train_file {train_file} \
             --eval_subset train \
-            --output_dir {dstore_path} \
-            --dstore_dir {dstore_path} \
+            --output_dir {output_folder} \
+            --dstore_dir {output_folder} \
             {f'--dstore_size {dstore_size}' if dstore_size else ''} \
-            --build_index | tee -a {output_folder / f"logs/build_index_{toxicity}.log"}
+            --build_index | tee -a {log_folder}
     """
 
     logger.info(f"Running `datastore build` command: {ds_cmd}")
@@ -60,7 +66,7 @@ def build_dstore(
     logger.info(f"Running `index train` command: {train_cmd}")
     run(train_cmd)
 
-    return dstore_path
+    return output_folder
 
 
 def train_expert(
@@ -73,6 +79,7 @@ def train_expert(
     block_size=128,
     batch_size=4,
     grad_accum=16,
+    log_folder="logs/",
     done=False,
 ):
     expert_path = output_folder / model_name / expert_name
@@ -96,8 +103,9 @@ def train_expert(
             --per_device_train_batch_size {batch_size} \
             --gradient_accumulation_steps {grad_accum} \
             --train_data_file {train_file} \
-            --overwrite_cache
+            --overwrite_cache | tee -a {log_folder}
     """
+    # TODO check log with tee
 
     run(train_cmd)
 
@@ -143,7 +151,11 @@ def main(
 ):
     # Folder setup
     output_folder = setup_output_folder(
-        output_folder, toxicity_choices, experiment_name, model_name, kind
+        output_folder,
+        toxicity_choices,
+        experiment_name,
+        model_name,
+        kind,
     )
 
     # Logger setup
@@ -158,8 +170,8 @@ def main(
     # Domains setup
     train_folder = Path(train_folder)
     files = {
-        "toxic": sorted(list(train_folder.glob("*_toxic.json"))),
-        "nontoxic": sorted(list(train_folder.glob("*_nontoxic.json"))),
+        "toxic": sorted(list(train_folder.glob("wilds_*_toxic.json"))),
+        "nontoxic": sorted(list(train_folder.glob("wilds_*_nontoxic.json"))),
     }
     pretrained = {"toxic": pretrained_toxic, "nontoxic": pretrained_nontoxic}
     domains = domains or extract_domains_from_file_list(files["toxic"])
@@ -183,36 +195,40 @@ def main(
 
                 file = [f for f in files[toxicity] if domain in str(f)][0]
 
-                path = None
+                model_path = output_folder / f"domain={d}-{domain}/checkpoints/{toxicity}"
                 if kind == "knn":
                     path = build_dstore(
-                        output_folder=output_folder,
+                        output_folder=model_path,
                         train_file=file,
                         model_name=model_name,
                         toxicity=toxicity,
-                        pretrained_path=pretrained[toxicity],
                         dstore_size=dstore_size,
+                        pretrained_path=pretrained[toxicity],
+                        log_folder=output_folder / f"logs/build_dstore_{toxicity}.log",
                         done=done,
                     )
 
                 elif kind == "dexperts":
                     path = train_expert(
+                        output_folder=model_path,
                         expert_name=f"finetune_{model_name}_{d}_{domain}_{toxicity}",
                         train_file=file,
                         model_name=model_name,
                         epochs=1,
-                        output_folder=output_folder / f"models/experts/{domain}",
                         pretrained_path=pretrained[toxicity],
+                        log_folder=output_folder / f"logs/train_{toxicity}.log",
                         done=done,
                     )
                 else:
                     raise RuntimeError("")
 
+                # We'll have every intermediate model saved
+                pretrained[toxicity] = path
+                paths[toxicity] = path
+
                 if not done:
                     with open(output_folder / "logs/done_domains.txt", "a") as f:
                         f.write(f"{domain}, {toxicity}\n")
-
-                paths[toxicity] = path
 
             evaluate(
                 domain=domain,
@@ -227,6 +243,7 @@ def main(
                 num_prompts=num_prompts,
                 kind=kind,
             )
+
     except KeyboardInterrupt:
         logger.info("Interrupted")
 

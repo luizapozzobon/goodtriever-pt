@@ -1,6 +1,5 @@
 import gc
 import logging
-import os
 import re
 import subprocess
 import time
