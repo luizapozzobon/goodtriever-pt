@@ -293,6 +293,12 @@ def compute_ppl(
             If higher than `threshold`, the text is toxic. Defaults to 0.5.
 
     """
+
+    if output_file.exists():
+        print(f"File already exist: {output_file}")
+        ppl = pd.read_csv(output_file)
+        return ppl
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     model = GPT2LMHeadModel.from_pretrained(model_name).to(device)
