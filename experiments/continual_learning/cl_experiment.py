@@ -183,6 +183,7 @@ def main(
     }
     pretrained = {"toxic": pretrained_toxic, "nontoxic": pretrained_nontoxic}
     domains = domains or extract_domains_from_file_list(files["toxic"])
+    domains = [str(d) for d in domains]
     logger.info(f"Domains: {', '.join(domains)}")
 
     logger.info(f"{'====' * 5}")
