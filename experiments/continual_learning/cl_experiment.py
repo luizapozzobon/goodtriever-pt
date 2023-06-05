@@ -138,7 +138,7 @@ def main(
     domains: Optional[Tuple] = None,
     model_name: str = "gpt2-large",
     toxicity_choices: Tuple = ("toxic", "nontoxic"),
-    prompts_path: str = "data/continual_mitigation/prompts/wilds_single_identity_4k_nontoxic_prompts.jsonl",
+    prompts_path: str = "data/continual_mitigation/prompts/wilds_5_clusters_200_samples_toxic.jsonl",
     rtp_prompts_path: str = "data/dexperts/prompts/nontoxic_prompts-10k.jsonl",
     train_folder: str = "data/continual_mitigation/domains/train",
     output_folder: str = "outputs/experiments/continual_learning",
@@ -203,7 +203,14 @@ def main(
 
                 logger.info(f"Domain ({d}/{len(domains)}): {domain} // Toxicity: {toxicity}")
 
-                file = [f for f in files[toxicity] if domain in str(f)][0]
+                try:
+                    file = [f for f in files[toxicity] if domain in str(f)][0]
+                except IndexError:
+                    # This will skip dstore building, but will return the pretrained path if any
+                    logger.info(f"No train files found for {domain}-{toxicity}. Using {pretrained[toxicity]}")
+                    pretrained[toxicity] = pretrained[toxicity]
+                    paths[toxicity] = pretrained[toxicity]
+                    continue
 
                 if multitask:
                     curr_df = pd.read_json(file)
