@@ -35,6 +35,7 @@ def evaluate_on_prompts(
     group_toxicity_by=None,
     num_prompts=None,
     kind="dexperts",
+    batch_size=4,
 ):
     generate_cmd = f"""
         python -m scripts.run_all \
@@ -50,7 +51,7 @@ def evaluate_on_prompts(
             --filter_p 0.9 \
             --group_toxicity_by {group_toxicity_by} \
             {f'--num_prompts {num_prompts}' if num_prompts is not None else ''} \
-            --batch_size 4
+            --batch_size {batch_size}
     """
     logger.info(f"Running domain {domain} `run_all` command: {generate_cmd}")
     return run(generate_cmd)
@@ -68,6 +69,7 @@ def evaluate(
     group_toxicity_by=None,
     num_prompts=None,
     kind="knn",
+    batch_size=4,
 ):
     evaluate_on_prompts(
         domain=domain,
@@ -80,6 +82,7 @@ def evaluate(
         group_toxicity_by=group_toxicity_by,
         num_prompts=num_prompts,
         kind=kind,
+        batch_size=batch_size,
     )
 
     # RTP 1k evaluation
@@ -95,6 +98,7 @@ def evaluate(
             group_toxicity_by=None,
             num_prompts=num_prompts or 1000,
             kind=kind,
+            batch_size=batch_size,
         )
 
 

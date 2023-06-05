@@ -144,6 +144,7 @@ def main(
     output_folder: str = "outputs/experiments/continual_learning",
     experiment_name: str = "continual_mitigation",
     rate_limit: str = 90,
+    batch_size: int = 4,
     group_toxicity_by: str = "domain",
     kind: str = "knn",
     pretrained_toxic: Optional[str] = None,
@@ -267,6 +268,7 @@ def main(
                 group_toxicity_by=group_toxicity_by,
                 num_prompts=num_prompts,
                 kind=kind,
+                batch_size=batch_size,
             )
 
     except KeyboardInterrupt:
