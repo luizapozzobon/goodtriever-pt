@@ -51,6 +51,8 @@ def collate(
             .to_frame()
             .rename(columns={0: "generations"})
         )
+        if "generations" in prompts:
+            del prompts["generations"]
         dataset = pd.merge(prompts, dataset, left_index=True, right_index=True)
 
     return dataset
@@ -97,6 +99,10 @@ def main(
 
     if isinstance(generations[column_name].iloc[0], dict):
         gen_list = np.stack(generations[column_name].apply(lambda x: x.get("text", "")))
+    elif isinstance(generations[column_name].iloc[0], list):
+        gen_list = np.stack(
+            generations[column_name].apply(lambda xs: [x.get("text", "") for x in xs])
+        )
     else:
         gen_list = np.stack(generations[column_name])
 
@@ -144,5 +150,4 @@ def main(
 
 
 if __name__ == "__main__":
-
     fire.Fire(main)
