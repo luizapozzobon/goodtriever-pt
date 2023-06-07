@@ -25,6 +25,7 @@ def build_dstore(
     toxicity,
     dstore_size=None,
     pretrained_path=None,
+    flat_index=False,
     done=False,
     log_folder="logs",
 ):
@@ -59,6 +60,7 @@ def build_dstore(
             --output_dir {output_folder} \
             --dstore_dir {output_folder} \
             {f'--dstore_size {dstore_size}' if dstore_size else ''} \
+            {'--flat_index' if flat_index else ''} \
             --build_index | tee -a {log_folder}
     """
 
@@ -207,7 +209,9 @@ def main(
                     file = [f for f in files[toxicity] if domain in str(f)][0]
                 except IndexError:
                     # This will skip dstore building, but will return the pretrained path if any
-                    logger.info(f"No train files found for {domain}-{toxicity}. Using {pretrained[toxicity]}")
+                    logger.info(
+                        f"No train files found for {domain}-{toxicity}. Using {pretrained[toxicity]}"
+                    )
                     pretrained[toxicity] = pretrained[toxicity]
                     paths[toxicity] = pretrained[toxicity]
                     continue

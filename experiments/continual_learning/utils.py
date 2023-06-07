@@ -36,6 +36,7 @@ def evaluate_on_prompts(
     num_prompts=None,
     kind="dexperts",
     batch_size=4,
+    flat_index=False,
 ):
     generate_cmd = f"""
         python -m scripts.run_all \
@@ -45,6 +46,7 @@ def evaluate_on_prompts(
             --dstore_dir {toxic_model} \
             {f'--other_dstore_dir {nontoxic_model}' if nontoxic_model else ''} \
             {'--dexperts True' if kind == 'dexperts' else '--knn True'} \
+            {'--flat_index True' if flat_index else ''} \
             --perspective_rate_limit {rate_limit} \
             --lmbda 2.0 \
             --method ensemble \
@@ -70,6 +72,7 @@ def evaluate(
     num_prompts=None,
     kind="knn",
     batch_size=4,
+    flat_index=False,
 ):
     evaluate_on_prompts(
         domain=domain,
@@ -83,6 +86,7 @@ def evaluate(
         num_prompts=num_prompts,
         kind=kind,
         batch_size=batch_size,
+        flat_index=flat_index,
     )
 
     # RTP 1k evaluation
@@ -99,6 +103,7 @@ def evaluate(
             num_prompts=num_prompts or 1000,
             kind=kind,
             batch_size=batch_size,
+            flat_index=flat_index,
         )
 
 
