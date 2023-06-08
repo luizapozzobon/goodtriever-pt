@@ -57,6 +57,7 @@ class KNNWrapper(object):
         filter_p=0,
         method="interpolate",
         other_dstore_dir=None,
+        ensemble_order=("subtract", "add"),
     ):
         self.dstore_dir = dstore_dir
         self.other_dstore_dir = other_dstore_dir
@@ -92,7 +93,7 @@ class KNNWrapper(object):
         }
         self.method = METHODS.from_string(method)
         self.method_func = method_to_method_func[self.method]
-        self.ds_ensemble_order = ("subtract", "add")
+        self.ds_ensemble_order = ensemble_order
 
         if self.method == METHODS.ensemble:
             logger.info(

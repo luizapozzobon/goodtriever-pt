@@ -91,6 +91,7 @@ class KNNArguments:
     recompute_dists: bool = field(default=False)
     method: str = field(default="interpolation")
     filter_p: float = field(default=0.9)
+    ensemble_order: tuple = field(default=("subtract", "add"))
 
     ## RetoMaton args:
     retomaton: bool = field(default=False)

@@ -101,7 +101,9 @@ def main(
         gen_list = np.stack(generations[column_name].apply(lambda x: x.get("text", "")))
     elif isinstance(generations[column_name].iloc[0], list):
         gen_list = np.stack(
-            generations[column_name].apply(lambda xs: [x.get("text", "") for x in xs])
+            generations[column_name].apply(
+                lambda xs: [x.get("text", "") for x in xs] if isinstance(xs[0], dict) else xs
+            )
         )
     else:
         gen_list = np.stack(generations[column_name])
