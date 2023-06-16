@@ -1,6 +1,7 @@
 import gc
 import logging
 import time
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -113,7 +114,9 @@ def main(
         unprompted_json = None
         prompted_json = collated_path
     else:
-        raise ValueError(
+        unprompted_json = None
+        prompted_json = collated_path
+        warnings.warn(
             f"Invalid filename for {collated_path}. No 'eos_' or 'prompted_' strings found."
         )
 

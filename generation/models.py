@@ -1,19 +1,19 @@
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from generation.dexperts import DExpertsWrapper
 from knn_transformers.knnlm import KNNWrapper
 
 
 def setup_tokenizer(model_name: str):
-    tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
     return tokenizer
 
 
 def setup_model(model_name: str, knn_args):
-    model = GPT2LMHeadModel.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
     dimension = model.config.hidden_size
 
     wrapper = None

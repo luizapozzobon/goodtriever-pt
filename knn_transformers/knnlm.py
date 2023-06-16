@@ -312,6 +312,8 @@ class KNNWrapper(object):
     def get_model_last_layer(model_type):
         # works for gpt2, marian, t5. If a model does not have an ".lm_head" layer,
         # add an "if model_type is ..." statement here, and return the output embedding layer
+        if model_type == "gpt_neox":
+            return lambda model: model.embed_out
         return lambda model: model.lm_head
 
     @staticmethod
@@ -343,6 +345,10 @@ class KNNWrapper(object):
                 lambda model: model.base_model.decoder.block[-1].layer[2],
                 False,
             ),
+        },
+        "gpt_neox": {
+            KEY_TYPE.last_ffn_input: (lambda model: model.gpt_neox.layers[-1].mlp, True),
+            KEY_TYPE.last_ffn_output: (lambda model: model.gpt_neox.layers[-1], False),
         },
     }
 
