@@ -350,6 +350,13 @@ class KNNWrapper(object):
             KEY_TYPE.last_ffn_input: (lambda model: model.gpt_neox.layers[-1].mlp, True),
             KEY_TYPE.last_ffn_output: (lambda model: model.gpt_neox.layers[-1], False),
         },
+        "opt": {
+            KEY_TYPE.last_ffn_input: (
+                lambda model: model.model.decoder.layers[-1],
+                True,
+            ),
+            KEY_TYPE.last_ffn_output: (lambda model: model.model.decoder.layers[-1], False),
+        },
     }
 
 
