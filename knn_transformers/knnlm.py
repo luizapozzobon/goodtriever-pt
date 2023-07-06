@@ -4,6 +4,7 @@ from enum import Enum, auto
 import numpy as np
 import torch
 from torch import nn
+from transformers import top_k_top_p_filtering
 
 from knn_transformers.datastore import DIST, Datastore
 
@@ -262,7 +263,12 @@ class KNNWrapper(object):
 
     @staticmethod
     def ensemble(
-        lm_log_probs, *knn_log_probs, lmbda=2.0, ensemble_order=("subtract", "add"), **kwargs
+        lm_log_probs,
+        *knn_log_probs,
+        lmbda=2.0,
+        ensemble_order=("subtract", "add"),
+        patch=True,
+        **kwargs,
     ):
         def patch_log_probs(log_probs):
             val = log_probs[log_probs > -50].min()
@@ -282,8 +288,10 @@ class KNNWrapper(object):
                 raise ValueError(f"Invalid ensemble order: {ensemble_order}")
 
         knn_log_probs_subtract, knn_log_probs_sum = knn_log_probs
-        knn_log_probs_subtract = patch_log_probs(knn_log_probs_subtract)
-        knn_log_probs_sum = patch_log_probs(knn_log_probs_sum)
+
+        if patch:
+            knn_log_probs_subtract = patch_log_probs(knn_log_probs_subtract)
+            knn_log_probs_sum = patch_log_probs(knn_log_probs_sum)
 
         return torch.nn.functional.log_softmax(
             lm_log_probs + torch.tensor(lmbda) * (knn_log_probs_sum - knn_log_probs_subtract),
@@ -330,7 +338,15 @@ class KNNWrapper(object):
 
 
 class KNNSaver(object):
-    def __init__(self, dstore_size, dstore_dir, dimension, knn_keytype=None, flat_index=False, continue_writing=False):
+    def __init__(
+        self,
+        dstore_size,
+        dstore_dir,
+        dimension,
+        knn_keytype=None,
+        flat_index=False,
+        continue_writing=False,
+    ):
         self.dstore_size = dstore_size
         self.dstore_dir = dstore_dir
         self.dimension = dimension
@@ -380,11 +396,13 @@ class KNNSaver(object):
             device=self.device,
             flat_index=self.flat_index,
             dstore_size=self.dstore_size,
-            continue_writing=self.continue_writing
+            continue_writing=self.continue_writing,
         ).load_keys_and_vals()
 
         # Update values after datastore loading
-        logger.info(f"dstore_size previous/current: {self.dstore_size}/{self.datastore.dstore_size}")
+        logger.info(
+            f"dstore_size previous/current: {self.dstore_size}/{self.datastore.dstore_size}"
+        )
         self.dstore_size = self.datastore.dstore_size
         self.dstore_idx = self.datastore.previous_dstore_size or 0
         logger.info(f"dstore_idx current: {self.dstore_idx}")

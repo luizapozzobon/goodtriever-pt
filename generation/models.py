@@ -1,7 +1,7 @@
-
 import torch
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
+from generation.dexperts import DExpertsWrapper
 from knn_transformers.knnlm import KNNWrapper
 
 
@@ -14,13 +14,11 @@ def setup_tokenizer(model_name: str):
 
 def setup_model(model_name: str, knn_args):
     model = GPT2LMHeadModel.from_pretrained(model_name)
-
     dimension = model.config.hidden_size
-    knn_wrapper = None
-    # knn_args.seed = training_args.seed
 
+    wrapper = None
     if knn_args.knn:
-        knn_wrapper = KNNWrapper(
+        wrapper = KNNWrapper(
             dstore_dir=knn_args.dstore_dir,
             other_dstore_dir=knn_args.other_dstore_dir,
             dimension=dimension,
@@ -36,11 +34,17 @@ def setup_model(model_name: str, knn_args):
             lmbda=knn_args.lmbda,
             knn_temp=knn_args.knn_temp,
             probe=knn_args.probe,
-            method=knn_args.method
+            method=knn_args.method,
+        )
+    elif knn_args.dexperts:
+        wrapper = DExpertsWrapper(
+            antiexpert_model=knn_args.dstore_dir,
+            expert_model=knn_args.other_dstore_dir,
+            alpha=knn_args.lmbda,
         )
 
-    if knn_wrapper is not None:
-        knn_wrapper.break_into(model)
+    if wrapper is not None:
+        wrapper.break_into(model)
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     model = model.to(device)

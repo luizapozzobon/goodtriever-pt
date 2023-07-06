@@ -64,6 +64,7 @@ class KNNArguments:
     """
 
     knn: bool = field(default=False)
+    dexperts: bool = field(default=False)
     knn_gpu: bool = field(default=True)
     dstore_size: int = field(default=None, metadata={"help": "The size of the dstore."})
     knn_keytype: KEY_TYPE.from_string = field(default=KEY_TYPE.last_ffn_input)
