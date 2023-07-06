@@ -58,6 +58,7 @@ class KNNWrapper(object):
         method="interpolate",
         other_dstore_dir=None,
         ensemble_order=("subtract", "add"),
+        debug=False
     ):
         self.dstore_dir = dstore_dir
         self.other_dstore_dir = other_dstore_dir
@@ -69,6 +70,7 @@ class KNNWrapper(object):
         self.knn_temperature = knn_temp
         self.probe = probe
         self.filter_p = filter_p
+        self.debug = debug
 
         self.knn_sim_func = DIST.l2 if knn_sim_func is None else knn_sim_func
         self.knn_keytype = KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
@@ -161,6 +163,7 @@ class KNNWrapper(object):
 
     def pre_forward_hook(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
         self.labels = labels
+        self.input_ids = input_ids
         return self.original_forward_func(
             input_ids=input_ids, labels=labels, attention_mask=attention_mask, **kwargs
         )
@@ -215,6 +218,9 @@ class KNNWrapper(object):
             knn_temperature=self.knn_temperature,
         )
 
+        if self.debug:
+            self.show_retrieved_context(knns=knns, vals=self.datastore.vals)
+
         if self.other_datastore is not None:
             if self.method == METHODS.ensemble:
                 dists, knns = self.other_datastore.get_knns(
@@ -241,6 +247,31 @@ class KNNWrapper(object):
         )  # (nonpad, vocab)
 
         return interpolated_scores
+
+    def show_retrieved_context(
+        self, knns, vals, show_context_tokens=20, num_neighbors=3, batch_idx=0
+    ):
+        from transformers import AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained("gpt2-large")
+
+        neighbors_to_investigate = knns[batch_idx, :num_neighbors]
+        context_tokens = torch.stack(
+            [
+                vals[idx - show_context_tokens : idx] if idx >= show_context_tokens else None
+                for idx in neighbors_to_investigate
+            ]
+        ).squeeze(-1)
+
+        breakpoint()
+        test_context = tokenizer.decode(self.input_ids[batch_idx])
+        context = tokenizer.batch_decode(context_tokens)
+        vals = tokenizer.batch_decode(vals[knns][batch_idx, :num_neighbors])
+
+        print(f"Test Context: {test_context}")
+        for c, v in zip(context, vals):
+            print(f"Context and Next Token: {c} //// {v}")
+            # print(f"Full Context: {n}")
 
     def register_hook(self, layer, func, pre=False):
         handle = (
