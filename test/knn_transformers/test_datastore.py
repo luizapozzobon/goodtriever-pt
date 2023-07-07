@@ -1,8 +1,10 @@
-from pathlib import Path
-import numpy as np
-from knn_transformers.datastore import Datastore
 import tempfile
+from pathlib import Path
+
+import numpy as np
 import pytest
+
+from generation.knn_transformers.datastore import Datastore
 
 
 def test_datastore_continual_add():

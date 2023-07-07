@@ -5,7 +5,7 @@ from typing import Union
 import torch
 from transformers import GPT2LMHeadModel, GPT2PreTrainedModel, top_k_top_p_filtering
 
-from knn_transformers.knnlm import KEY_TYPE, ActivationCapturer, KNNWrapper
+from generation.knn_transformers.knnlm import KEY_TYPE, KNNWrapper
 
 logger = logging.getLogger(__name__)
 logger.setLevel(20)
@@ -19,7 +19,7 @@ class DExpertsWrapper(KNNWrapper):
         antiexpert_model: Union[str, Path, GPT2PreTrainedModel] = None,
         expert_model: Union[str, Path, GPT2PreTrainedModel] = None,
         alpha: int = 2.0,
-        filter_p: float = 0.9
+        filter_p: float = 0.9,
     ):
         self.alpha = alpha
         self.filter_p = filter_p
@@ -47,17 +47,6 @@ class DExpertsWrapper(KNNWrapper):
         # Inject our pre_forward_hook to capture the labels at every forward pass
         self.original_forward_func = model.forward
         model.forward = self.pre_forward_hook
-
-        # TODO: DExperts - do we need this?
-        # Inject our activation_capturer to capture the activations at every forward pass
-        layer_to_capture_fn, capture_input = DExpertsWrapper.model_layer_to_capture[
-            model.config.model_type
-        ][self.knn_keytype]
-        layer_to_capture = layer_to_capture_fn(model)
-        self.activation_capturer = ActivationCapturer(
-            layer_to_capture, capture_input=capture_input
-        )
-        self.register_hook(layer_to_capture, self.activation_capturer)
 
         # Inject our main function after the model's final layer
         final_layer = KNNWrapper.get_model_last_layer(model.config.model_type)(model)
@@ -129,10 +118,3 @@ class DExpertsWrapper(KNNWrapper):
         output[nonpad_mask] = new_scores
 
         return output
-
-    model_layer_to_capture = {
-        "gpt2": {
-            KEY_TYPE.last_ffn_input: (lambda model: model.base_model.h[-1].mlp, True),
-            KEY_TYPE.last_ffn_output: (lambda model: model.base_model.h[-1], False),
-        }
-    }

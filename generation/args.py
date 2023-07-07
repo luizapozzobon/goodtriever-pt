@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from transformers import HfArgumentParser
 
-from knn_transformers.knnlm import DIST, KEY_TYPE
+from generation.knn_transformers.knnlm import DIST, KEY_TYPE
 
 
 class GenerationParser:

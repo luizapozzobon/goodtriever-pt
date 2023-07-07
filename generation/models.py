@@ -2,7 +2,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from generation.dexperts import DExpertsWrapper
-from knn_transformers.knnlm import KNNWrapper
+from generation.knn_transformers.knnlm import KNNWrapper
 
 
 def setup_tokenizer(model_name: str):
