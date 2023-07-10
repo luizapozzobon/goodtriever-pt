@@ -36,6 +36,7 @@ def setup_model(model_name: str, knn_args):
             probe=knn_args.probe,
             filter_p=knn_args.filter_p,
             method=knn_args.method,
+            debug=knn_args.debug,
         )
     elif knn_args.dexperts:
         wrapper = DExpertsWrapper(

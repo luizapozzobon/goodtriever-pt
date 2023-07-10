@@ -92,6 +92,7 @@ class KNNArguments:
     method: str = field(default="interpolation")
     filter_p: float = field(default=0.9)
     ensemble_order: tuple = field(default=("subtract", "add"))
+    debug: bool = field(default=False, metadata={"help": "Turn on debug outputs."})
 
     ## RetoMaton args:
     retomaton: bool = field(default=False)
