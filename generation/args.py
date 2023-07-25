@@ -176,3 +176,4 @@ class KNNArguments:
             "help": "Order of datastores on ensemble equation. By default, the first is subtracted."
         },
     )
+    debug: bool = field(default=False, metadata={"help": "Turn on debug outputs."})

@@ -4,7 +4,7 @@ from enum import Enum, auto
 import numpy as np
 import torch
 from torch import nn
-from transformers import top_k_top_p_filtering
+from transformers import AutoTokenizer, top_k_top_p_filtering
 
 from knn_transformers.datastore import DIST, Datastore
 
@@ -58,6 +58,7 @@ class KNNWrapper(object):
         method="interpolate",
         other_dstore_dir=None,
         ensemble_order=("subtract", "add"),
+        debug=False,
     ):
         self.dstore_dir = dstore_dir
         self.other_dstore_dir = other_dstore_dir
@@ -69,6 +70,8 @@ class KNNWrapper(object):
         self.knn_temperature = knn_temp
         self.probe = probe
         self.filter_p = filter_p
+        self.debug = debug
+        self._tokenizer = None  # Used only for debugging purposes
 
         self.knn_sim_func = DIST.l2 if knn_sim_func is None else knn_sim_func
         self.knn_keytype = KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
@@ -159,8 +162,12 @@ class KNNWrapper(object):
         self.register_hook(final_layer, self.post_forward_hook)
         self.vocab_size = final_layer.out_features
 
+        if self.debug:
+            self._tokenizer = AutoTokenizer.from_pretrained(model.config._name_or_path)
+
     def pre_forward_hook(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
         self.labels = labels
+        self.input_ids = input_ids
         return self.original_forward_func(
             input_ids=input_ids, labels=labels, attention_mask=attention_mask, **kwargs
         )
@@ -198,6 +205,8 @@ class KNNWrapper(object):
         lm_logits = lm_logits[nonpad_mask]
         queries = queries[nonpad_mask]  # (nonpad, dim)
 
+        self._first_gen = True if nonpad_mask.shape[1] != 1 else False
+
         new_scores = self.modify_probabilities(lm_logits, queries)
         output[nonpad_mask] = new_scores
 
@@ -215,6 +224,11 @@ class KNNWrapper(object):
             knn_temperature=self.knn_temperature,
         )
 
+        if self.debug and self._first_gen:
+            self.show_retrieved_context(
+                label="dstore", knns=knns, vals=self.datastore.vals, show_test_context=True
+            )
+
         if self.other_datastore is not None:
             if self.method == METHODS.ensemble:
                 dists, knns = self.other_datastore.get_knns(
@@ -227,6 +241,14 @@ class KNNWrapper(object):
                     self.vocab_size,
                     knn_temperature=self.knn_temperature,
                 )
+
+                if self.debug and self._first_gen:
+                    self.show_retrieved_context(
+                        label="other_dstore",
+                        knns=knns,
+                        vals=self.other_datastore.vals,
+                        show_test_context=False,
+                    )
 
                 knn_log_probs = (knn_log_probs, other_knn_log_probs)
             else:
@@ -241,6 +263,35 @@ class KNNWrapper(object):
         )  # (nonpad, vocab)
 
         return interpolated_scores
+
+    def show_retrieved_context(
+        self,
+        label,
+        knns,
+        vals,
+        show_context_tokens=30,
+        num_neighbors=3,
+        batch_idx=0,
+        show_test_context=True,
+    ):
+        neighbors_to_investigate = knns[batch_idx, :num_neighbors]
+        context_tokens = torch.stack(
+            [
+                vals[idx - show_context_tokens : idx] if idx >= show_context_tokens else None
+                for idx in neighbors_to_investigate
+            ]
+        ).squeeze(-1)
+
+        context = self._tokenizer.batch_decode(context_tokens)
+        vals = self._tokenizer.batch_decode(vals[knns][batch_idx, :num_neighbors])
+
+        if show_test_context:
+            test_context = self._tokenizer.decode(self.input_ids[batch_idx])
+            print(f"==== Test Context: {test_context}")
+
+        print(f"---- {label} - Contexts and Next Tokens: ")
+        for i, (c, v) in enumerate(zip(context, vals)):
+            print(f"{i+1}) {c} // {v}")
 
     def register_hook(self, layer, func, pre=False):
         handle = (

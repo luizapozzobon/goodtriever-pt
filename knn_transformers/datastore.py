@@ -79,7 +79,13 @@ class Datastore:
             dists = self.dist_func(queries, knns_vecs)
         return dists, knns
 
-    def knns_to_log_prob(self, knns, neg_dists, vocab_size, knn_temperature=1.0):
+    def knns_to_log_prob(
+        self,
+        knns,
+        neg_dists,
+        vocab_size,
+        knn_temperature=1.0,
+    ):
         probs = torch.nn.functional.softmax(neg_dists / knn_temperature, dim=-1)
         vals_at_knns = self.vals[knns].squeeze(-1)  # (nonpad batch * time, k)
         knn_log_probs = (
