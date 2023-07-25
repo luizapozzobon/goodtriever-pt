@@ -54,8 +54,10 @@ class KNNWrapper(object):
         lmbda=0.25,
         knn_temp=1.0,
         probe=32,
+        filter_p=0,
         method="interpolate",
         other_dstore_dir=None,
+        ensemble_order=("subtract", "add"),
     ):
         self.dstore_dir = dstore_dir
         self.other_dstore_dir = other_dstore_dir
@@ -66,6 +68,7 @@ class KNNWrapper(object):
         self.other_k = other_k or k
         self.knn_temperature = knn_temp
         self.probe = probe
+        self.filter_p = filter_p
 
         self.knn_sim_func = DIST.l2 if knn_sim_func is None else knn_sim_func
         self.knn_keytype = KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
@@ -90,7 +93,7 @@ class KNNWrapper(object):
         }
         self.method = METHODS.from_string(method)
         self.method_func = method_to_method_func[self.method]
-        self.ds_ensemble_order = ("subtract", "add")
+        self.ds_ensemble_order = ensemble_order
 
         if self.method == METHODS.ensemble:
             logger.info(
@@ -112,6 +115,7 @@ class KNNWrapper(object):
             no_load_keys=self.no_load_keys,
             flat_index=self.flat_index,
         ).setup_faiss()
+        logger.info(f"`dstore_size`: {self.datastore.dstore_size}")
 
         self.other_datastore = None
         if self.other_dstore_dir is not None:
@@ -127,7 +131,7 @@ class KNNWrapper(object):
                 no_load_keys=self.no_load_keys,
                 flat_index=self.flat_index,
             ).setup_faiss()
-            logger.info("Using `other_dstore_dir`.")
+            logger.info(f"Using `other_dstore_dir`. Size: {self.other_datastore.dstore_size}")
 
     def break_into(self, model):
         self.model = model
@@ -166,6 +170,12 @@ class KNNWrapper(object):
         shift = 0 if self.is_encoder_decoder else 1
         lm_logits = output
         lm_logits = torch.nn.functional.log_softmax(lm_logits, dim=-1)  # (batch, time, vocab)
+
+        # From DExperts - adding this reduced perplexity a bit.
+        if self.filter_p:
+            for i, logits in enumerate(lm_logits):
+                lm_logits[i] = top_k_top_p_filtering(logits, top_p=self.filter_p)
+
         queries = self.activation_capturer.captured  # (batch, time, dim)
 
         if self.labels is None:
@@ -302,6 +312,8 @@ class KNNWrapper(object):
     def get_model_last_layer(model_type):
         # works for gpt2, marian, t5. If a model does not have an ".lm_head" layer,
         # add an "if model_type is ..." statement here, and return the output embedding layer
+        if model_type == "gpt_neox":
+            return lambda model: model.embed_out
         return lambda model: model.lm_head
 
     @staticmethod
@@ -333,6 +345,17 @@ class KNNWrapper(object):
                 lambda model: model.base_model.decoder.block[-1].layer[2],
                 False,
             ),
+        },
+        "gpt_neox": {
+            KEY_TYPE.last_ffn_input: (lambda model: model.gpt_neox.layers[-1].mlp, True),
+            KEY_TYPE.last_ffn_output: (lambda model: model.gpt_neox.layers[-1], False),
+        },
+        "opt": {
+            KEY_TYPE.last_ffn_input: (
+                lambda model: model.model.decoder.layers[-1],
+                True,
+            ),
+            KEY_TYPE.last_ffn_output: (lambda model: model.model.decoder.layers[-1], False),
         },
     }
 
@@ -400,9 +423,7 @@ class KNNSaver(object):
         ).load_keys_and_vals()
 
         # Update values after datastore loading
-        logger.info(
-            f"dstore_size previous/current: {self.dstore_size}/{self.datastore.dstore_size}"
-        )
+        logger.info(f"dstore_size initial/actual: {self.dstore_size}/{self.datastore.dstore_size}")
         self.dstore_size = self.datastore.dstore_size
         self.dstore_idx = self.datastore.previous_dstore_size or 0
         logger.info(f"dstore_idx current: {self.dstore_idx}")

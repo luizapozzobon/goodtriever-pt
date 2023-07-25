@@ -12,6 +12,8 @@ aiohttp==3.7.4.post0
     #   datasets
     #   fsspec
     #   gcsfs
+altair==5.0.1
+    # via -r requirements.in
 asttokens==2.2.1
     # via stack-data
 async-timeout==3.0.1
@@ -20,15 +22,24 @@ attrs==22.2.0
     # via
     #   aiohttp
     #   jsonlines
+    #   jsonschema
     #   pytest
+    #   referencing
 backcall==0.2.0
     # via ipython
 backoff==2.2.1
     # via cohere
 black==22.12.0
     # via -r requirements.in
+blis==0.7.9
+    # via thinc
 cachetools==5.3.0
     # via google-auth
+catalogue==2.0.8
+    # via
+    #   spacy
+    #   srsly
+    #   thinc
 certifi==2022.12.7
     # via requests
 chardet==4.0.0
@@ -38,15 +49,26 @@ charset-normalizer==3.0.1
 click==8.1.3
     # via
     #   black
+    #   nltk
     #   nomic
+    #   typer
 cohere==4.0.0
     # via nomic
 comm==0.1.2
     # via ipykernel
+confection==0.0.4
+    # via thinc
 contourpy==1.0.7
     # via matplotlib
 cycler==0.11.0
     # via matplotlib
+cymem==2.0.7
+    # via
+    #   preshed
+    #   spacy
+    #   thinc
+cython==0.29.36
+    # via hdbscan
 datasets==2.9.0
     # via -r requirements.in
 debugpy==1.6.6
@@ -59,6 +81,7 @@ dill==0.3.6
     # via
     #   datasets
     #   multiprocess
+    #   pandarallel
 exceptiongroup==1.1.0
     # via pytest
 executing==1.2.0
@@ -110,9 +133,12 @@ googleapis-common-protos==1.58.0
     # via google-api-core
 grpcio==1.51.1
     # via tensorboard
+hdbscan==0.8.30
+    # via -r requirements.in
 huggingface-hub==0.11.1
     # via
     #   datasets
+    #   sentence-transformers
     #   transformers
 idna==3.4
     # via
@@ -122,6 +148,11 @@ importlib-metadata==6.0.0
     # via
     #   jupyter-client
     #   markdown
+    #   numba
+importlib-resources==5.12.0
+    # via
+    #   jsonschema
+    #   jsonschema-specifications
 iniconfig==2.0.0
     # via pytest
 ipykernel==6.20.2
@@ -136,10 +167,23 @@ isort==5.11.4
     # via -r requirements.in
 jedi==0.18.2
     # via ipython
+jinja2==3.1.2
+    # via
+    #   altair
+    #   spacy
 joblib==1.2.0
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   hdbscan
+    #   nltk
+    #   pynndescent
+    #   scikit-learn
 jsonlines==3.1.0
     # via nomic
+jsonschema==4.18.0
+    # via altair
+jsonschema-specifications==2023.6.1
+    # via jsonschema
 jupyter-client==8.0.0
     # via ipykernel
 jupyter-core==5.1.5
@@ -148,6 +192,12 @@ jupyterlab-widgets==3.0.5
     # via ipywidgets
 kiwisolver==1.4.4
     # via matplotlib
+langcodes==3.3.0
+    # via spacy
+llvmlite==0.40.1
+    # via
+    #   numba
+    #   pynndescent
 loguru==0.6.0
     # via nomic
 markdown==3.4.1
@@ -155,7 +205,9 @@ markdown==3.4.1
 markdown-it-py==2.2.0
     # via rich
 markupsafe==2.1.2
-    # via werkzeug
+    # via
+    #   jinja2
+    #   werkzeug
 matplotlib==3.6.3
     # via
     #   -r requirements.in
@@ -175,24 +227,45 @@ multidict==6.0.4
     #   yarl
 multiprocess==0.70.14
     # via datasets
+murmurhash==1.0.9
+    # via
+    #   preshed
+    #   spacy
+    #   thinc
 mypy-extensions==0.4.3
     # via black
 nest-asyncio==1.5.6
     # via ipykernel
+nltk==3.8.1
+    # via sentence-transformers
 nomic==1.0.46
     # via -r requirements.in
+numba==0.57.1
+    # via
+    #   pynndescent
+    #   umap-learn
 numpy==1.24.1
     # via
+    #   altair
+    #   blis
     #   contourpy
     #   datasets
+    #   hdbscan
     #   matplotlib
     #   nomic
+    #   numba
     #   pandas
     #   pyarrow
+    #   scikit-learn
     #   scipy
     #   seaborn
+    #   sentence-transformers
+    #   spacy
     #   tensorboard
+    #   thinc
+    #   torchvision
     #   transformers
+    #   umap-learn
     #   wordcloud
 nvidia-cublas-cu11==11.10.3.66
     # via
@@ -213,16 +286,24 @@ packaging==23.0
     #   ipykernel
     #   matplotlib
     #   pytest
+    #   spacy
+    #   thinc
     #   transformers
+pandarallel==1.6.5
+    # via -r requirements.in
 pandas==1.5.3
     # via
     #   -r requirements.in
+    #   altair
     #   datasets
+    #   pandarallel
     #   seaborn
 parso==0.8.3
     # via jedi
 pathspec==0.10.3
     # via black
+pathy==0.10.1
+    # via spacy
 pexpect==4.8.0
     # via ipython
 pickleshare==0.7.5
@@ -230,13 +311,20 @@ pickleshare==0.7.5
 pillow==9.4.0
     # via
     #   matplotlib
+    #   torchvision
     #   wordcloud
+pkgutil-resolve-name==1.3.10
+    # via jsonschema
 platformdirs==2.6.2
     # via
     #   black
     #   jupyter-core
 pluggy==1.0.0
     # via pytest
+preshed==3.0.8
+    # via
+    #   spacy
+    #   thinc
 prompt-toolkit==3.0.36
     # via ipython
 protobuf==3.20.3
@@ -248,6 +336,7 @@ psutil==5.9.4
     # via
     #   -r requirements.in
     #   ipykernel
+    #   pandarallel
 ptyprocess==0.7.0
     # via pexpect
 pure-eval==0.2.2
@@ -265,13 +354,19 @@ pyasn1-modules==0.2.8
 pycodestyle==2.10.0
     # via flake8
 pydantic==1.10.6
-    # via nomic
+    # via
+    #   confection
+    #   nomic
+    #   spacy
+    #   thinc
 pyflakes==3.0.1
     # via flake8
 pygments==2.14.0
     # via
     #   ipython
     #   rich
+pynndescent==0.5.10
+    # via umap-learn
 pyparsing==3.0.9
     # via matplotlib
 pytest==7.2.1
@@ -292,8 +387,14 @@ pyzmq==25.0.0
     # via
     #   ipykernel
     #   jupyter-client
+referencing==0.29.1
+    # via
+    #   jsonschema
+    #   jsonschema-specifications
 regex==2022.10.31
-    # via transformers
+    # via
+    #   nltk
+    #   transformers
 requests==2.28.2
     # via
     #   cohere
@@ -306,7 +407,9 @@ requests==2.28.2
     #   nomic
     #   requests-oauthlib
     #   responses
+    #   spacy
     #   tensorboard
+    #   torchvision
     #   transformers
 requests-oauthlib==1.3.1
     # via google-auth-oauthlib
@@ -314,18 +417,53 @@ responses==0.18.0
     # via datasets
 rich==13.3.2
     # via nomic
+rpds-py==0.8.8
+    # via
+    #   jsonschema
+    #   referencing
 rsa==4.9
     # via google-auth
+scikit-learn==1.3.0
+    # via
+    #   hdbscan
+    #   pynndescent
+    #   sentence-transformers
+    #   umap-learn
 scipy==1.10.0
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   hdbscan
+    #   pynndescent
+    #   scikit-learn
+    #   sentence-transformers
+    #   umap-learn
 seaborn==0.12.2
     # via -r requirements.in
+sentence-transformers==2.2.2
+    # via -r requirements.in
+sentencepiece==0.1.99
+    # via sentence-transformers
 six==1.16.0
     # via
     #   asttokens
     #   fire
     #   google-auth
     #   python-dateutil
+smart-open==6.3.0
+    # via
+    #   pathy
+    #   spacy
+spacy==3.5.3
+    # via -r requirements.in
+spacy-legacy==3.0.12
+    # via spacy
+spacy-loggers==1.0.4
+    # via spacy
+srsly==2.4.6
+    # via
+    #   confection
+    #   spacy
+    #   thinc
 stack-data==0.6.2
     # via ipython
 tensorboard==2.11.2
@@ -336,16 +474,26 @@ tensorboard-plugin-wit==1.8.1
     # via tensorboard
 termcolor==2.2.0
     # via fire
+thinc==8.1.10
+    # via spacy
+threadpoolctl==3.1.0
+    # via scikit-learn
 tokenizers==0.13.2
     # via transformers
 tomli==2.0.1
     # via
     #   black
     #   pytest
+toolz==0.12.0
+    # via altair
 torch==1.13.1
     # via
     #   -r requirements.in
+    #   sentence-transformers
+    #   torchvision
     #   transformers
+torchvision==0.14.1
+    # via sentence-transformers
 tornado==6.2
     # via
     #   ipykernel
@@ -355,8 +503,12 @@ tqdm==4.64.1
     #   -r requirements.in
     #   datasets
     #   huggingface-hub
+    #   nltk
     #   nomic
+    #   sentence-transformers
+    #   spacy
     #   transformers
+    #   umap-learn
 traitlets==5.8.1
     # via
     #   comm
@@ -367,19 +519,33 @@ traitlets==5.8.1
     #   jupyter-core
     #   matplotlib-inline
 transformers[torch]==4.25.1
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   sentence-transformers
+typer==0.7.0
+    # via
+    #   pathy
+    #   spacy
 typing-extensions==4.4.0
     # via
     #   aiohttp
+    #   altair
     #   black
     #   huggingface-hub
     #   pydantic
     #   rich
     #   torch
+    #   torchvision
+umap-learn==0.5.3
+    # via -r requirements.in
 urllib3==1.26.14
     # via
     #   requests
     #   responses
+wasabi==1.1.1
+    # via
+    #   spacy
+    #   thinc
 wcwidth==0.2.6
     # via prompt-toolkit
 werkzeug==2.2.2
@@ -400,7 +566,9 @@ xxhash==3.2.0
 yarl==1.8.2
     # via aiohttp
 zipp==3.11.0
-    # via importlib-metadata
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

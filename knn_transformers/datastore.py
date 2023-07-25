@@ -112,6 +112,12 @@ class Datastore:
         start = time.time()
         index_name = self.get_index_path()
 
+        if not Path(index_name).exists():
+            if Path(index_name.replace("_flat", "")).exists():
+                logger.info(f"Fallback index {index_name} to its non-flat version, which exists.")
+                self.flat_index = False
+                index_name = index_name.replace("_flat", "")
+
         cpu_index = faiss.read_index(index_name, faiss.IO_FLAG_ONDISK_SAME_DIR)
         logger.info(f"Reading datastore took {time.time() - start} s")
         cpu_index.nprobe = self.probe

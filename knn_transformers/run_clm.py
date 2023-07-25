@@ -585,8 +585,13 @@ def main():
         for chunk in data["labels"]:
             total_eval_tokens += len([x for x in chunk[1:] if x != padding_index])
         logger.info(f"[{split}] Total eval tokens: {total_eval_tokens}")
-        if knn_args.dstore_size is None and split == "train":
-            knn_args.dstore_size = total_eval_tokens
+        if split == "train":
+            if knn_args.dstore_size is None:
+                knn_args.dstore_size = total_eval_tokens
+            if knn_args.dstore_size > total_eval_tokens:
+                raise RuntimeError(
+                    f"Datastore size too large. Maximum number of tokens is: {total_eval_tokens}"
+                )
 
     if training_args.do_train:
         if "train" not in tokenized_datasets:
@@ -669,7 +674,7 @@ def main():
             dimension=dimension,
             flat_index=knn_args.flat_index,
             knn_keytype=knn_args.knn_keytype,
-            continue_writing=knn_args.continue_writing
+            continue_writing=knn_args.continue_writing,
         )
 
     if knn_wrapper is not None:
