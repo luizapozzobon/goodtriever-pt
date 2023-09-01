@@ -8,8 +8,8 @@ from datasets import load_dataset
 
 def main(
     output_folder: str,
+    use_custom: bool = False,
     use_paradetox: bool = False,
-    use_rtp: bool = False,
     use_toxigen: bool = False,
     rtp_path: str = "data/rescored/rtp_full_sequences_filtered_dexperts_collated.jsonl",
     toxic_threshold: float = 0.5,
@@ -20,7 +20,7 @@ def main(
     Data is saved as toxic and non-toxic json files.
 
     Currently, this script supports processing for:
-        - RealToxicityPrompts
+        - RealToxicityPrompts (as custom)
         - Paradetox
         - Toxigen
 
@@ -29,15 +29,26 @@ def main(
 
     Args:
         output_folder (str): Folder to save processed json files to.
+        use_custom (bool, optional): Whether to process custom dataset. Defaults to False.
         use_paradetox (bool, optional): Whether to process paradetox. Defaults to False.
-        use_rtp (bool, optional): Whether to process RTP. Defaults to False.
-        use_toxigen (bool, optional): Whether to process Toxigen. Defaults to True.
-        rtp_path (str, optional): Path to RTP joint sequences.
-            Defaults to "data/rescored/realtoxicityprompts-data/rtp_joint_sequences_rescored.jsonl".
-        threshold (float, optional): Toxicity threshold. Defaults to 0.5.
+        use_toxigen (bool, optional): Whether to process Toxigen. Defaults to False.
+        custom_jsonl_path (str, optional): Path to custom jsonl file.
+            Defaults to "data/rescored/rtp_full_sequences_filtered_dexperts_collated.jsonl".
+        toxic_threshold (float, optional): Samples higher than this threshold are toxic.
+            Defaults to 0.5.
+        nontoxic_threshold (float, optional): Samples lower or equal to this threshold are non-toxic.
+            Defaults to 0.1.
     """
     toxic_ds = pd.DataFrame()
     nontoxic_ds = pd.DataFrame()
+
+    if use_custom:
+        custom = pd.read_json(rtp_path, lines=True)
+        toxic = custom[custom["toxicity"] > toxic_threshold]
+        nontoxic = custom[custom["toxicity"] <= nontoxic_threshold]
+
+        toxic_ds = pd.concat([toxic_ds, pd.DataFrame(toxic["text"], columns=["text"])])
+        nontoxic_ds = pd.concat([nontoxic_ds, pd.DataFrame(nontoxic["text"], columns=["text"])])
 
     if use_paradetox:
         dataset = load_dataset("s-nlp/paradetox")
@@ -46,14 +57,6 @@ def main(
 
         toxic_ds = pd.concat([toxic_ds, pd.DataFrame(toxic, columns=["text"])])
         nontoxic_ds = pd.concat([nontoxic_ds, pd.DataFrame(nontoxic, columns=["text"])])
-
-    if use_rtp:
-        rtp = pd.read_json(rtp_path, lines=True)
-        toxic = rtp[rtp["toxicity"] > toxic_threshold]
-        nontoxic = rtp[rtp["toxicity"] <= nontoxic_threshold]
-
-        toxic_ds = pd.concat([toxic_ds, pd.DataFrame(toxic["text"], columns=["text"])])
-        nontoxic_ds = pd.concat([nontoxic_ds, pd.DataFrame(nontoxic["text"], columns=["text"])])
 
     if use_toxigen:
         dataset = load_dataset("skg/toxigen-data", name="train", use_auth_token=True)[
@@ -92,8 +95,8 @@ def main(
         name = mode
         if use_paradetox:
             name += "_paradetox"
-        if use_rtp:
-            name += "_rtp"
+        if use_custom:
+            name += "_custom"
         output_file = output_folder / f"{name}.json"
 
         dataset.to_json(output_file, orient="records")

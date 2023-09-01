@@ -268,7 +268,6 @@ def compute_ppl(
     sample_perplexity: Optional[int] = 1000,
     stride: int = 512,
     threshold: float = 0.5,
-    ppl_as_dexperts: bool = True,
 ) -> pd.DataFrame:
     """Compute perplexity for prompted or unprompted generations.
 
@@ -328,12 +327,9 @@ def compute_ppl(
             subdf = df.loc[condition_df.index]
 
             if not subdf.empty:
-                if ppl_as_dexperts:
-                    ppl[condition] = {
-                        "perplexity": conditional_perplexity(
-                            subdf, model, tokenizer, device="cuda"
-                        )
-                    }
+                ppl[condition] = {
+                    "perplexity": conditional_perplexity(subdf, model, tokenizer, device="cuda")
+                }
     else:
         predictions = df.text.values
         print(f"Condition 'unprompted' total sequences: {predictions.shape[0]}.")

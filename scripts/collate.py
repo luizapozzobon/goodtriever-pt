@@ -61,7 +61,7 @@ def collate(
 def main(
     generations_path: Union[str, Path],
     scores_path: Union[str, Path],
-    prompts_path: str = "gs://cohere-dev/luiza/model-safety/outputs/rtp_rescore/rtp_prompts_rescored.jsonl",
+    prompts_path: str,
     output_folder: Union[str, Path] = None,
     chunksize: int = int(1e5),
     column_name: str = "generations",
@@ -74,8 +74,7 @@ def main(
     Args:
         generations_path (str): Path to generations file.
         scores_path (str): Path to scores file.
-        prompts_path (str, optional): Path to prompts file.
-            Defaults to "gs://cohere-dev/data/realtoxicityprompts/prompts.jsonl".
+        prompts_path (str): Path to prompts file.
         output_folder (str, optional): Output folder. If None, file will be saved to
             `scores_path` folder. Defaults to None.
         chunksize (int): Chunksize to split large scores files when loading
