@@ -10,9 +10,10 @@ def main(
     output_folder: str,
     use_paradetox: bool = False,
     use_rtp: bool = False,
-    use_toxigen: bool = True,
-    rtp_path: str = "data/rescored/realtoxicityprompts-data/rtp_joint_sequences_rescored.jsonl",
-    threshold: float = 0.5,
+    use_toxigen: bool = False,
+    rtp_path: str = "data/rescored/rtp_full_sequences_filtered_dexperts_collated.jsonl",
+    toxic_threshold: float = 0.5,
+    nontoxic_threshold: float = 0.1,
 ):
     """Process common datasets to be used as datastores.
 
@@ -48,8 +49,8 @@ def main(
 
     if use_rtp:
         rtp = pd.read_json(rtp_path, lines=True)
-        toxic = rtp[rtp["toxicity"] > threshold]
-        nontoxic = rtp[rtp["toxicity"] <= threshold]
+        toxic = rtp[rtp["toxicity"] > toxic_threshold]
+        nontoxic = rtp[rtp["toxicity"] <= nontoxic_threshold]
 
         toxic_ds = pd.concat([toxic_ds, pd.DataFrame(toxic["text"], columns=["text"])])
         nontoxic_ds = pd.concat([nontoxic_ds, pd.DataFrame(nontoxic["text"], columns=["text"])])
@@ -59,8 +60,8 @@ def main(
             "train"
         ]  # 250k training examples
 
-        toxic_mask = np.array(dataset["prompt_label"]) >= 0.5
-        nontoxic_mask = np.array(dataset["prompt_label"]) < 0.5
+        toxic_mask = np.array(dataset["prompt_label"]) >= toxic_threshold
+        nontoxic_mask = np.array(dataset["prompt_label"]) < nontoxic_threshold
 
         prompts = np.array(dataset["prompt"])
         toxic = np.stack([s for p in prompts[toxic_mask] for s in p.split("\\n- ")]).reshape(-1)
