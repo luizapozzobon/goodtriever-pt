@@ -16,9 +16,12 @@ def make_generations_col(generations, responses):
         yield {"text": generation, **response}
 
 
-def main(original_prompts, scores, output_folder=None, helm=False):
+def main(original_prompts, scores, output_folder=None, helm=False, treat_as_prompts=True):
     df_original = pd.read_json(original_prompts, lines=True)
-    df_prompt = pd.json_normalize(df_original["prompt"])
+    if treat_as_prompts:
+        df_prompt = pd.json_normalize(df_original["prompt"])
+    else:
+        df_prompt = df_original
 
     df_scores = pd.read_json(scores, lines=True)
 
@@ -48,6 +51,7 @@ def main(original_prompts, scores, output_folder=None, helm=False):
     output_folder = output_folder / Path(original_prompts).name
     print(f"Writing to {output_folder}")
     df_output.to_json(output_folder, orient="records", lines=True)
+
 
 if __name__ == "__main__":
     fire.Fire(main)
