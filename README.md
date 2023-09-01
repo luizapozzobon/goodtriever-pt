@@ -19,25 +19,18 @@ conda env create -f environment.yml
 conda activate model_safety
 ```
 
-## Download datastores/data
+## Download data and model generations
 
-Pretrained datastores for GPT2 - Large.
+Datasets to build datastores and models generations are available in this HuggingFace dataset repo:
 
-```
-#TODO
-
-# Toxic datastore
-
-# Non-toxic datastore
-
-# Data: Jigsaw unintended bias
-
+```bash
+git clone https://huggingface.co/datasets/luizapzbn/goodtriever-data
 ```
 
 
 ## Usage
 
-In order to use Goodtriever, you need the toxic/non-toxic datastores. You can either download the ones for GPT2-Large or train it for your model.
+In order to use Goodtriever, you need the toxic/non-toxic datastores. [Here](https://huggingface.co/datasets/luizapzbn/goodtriever-data/tree/main/data/jigsaw) are the files for the jigsaw datastore used in the main experiments section. Next, you can build the datastores for your model.
 
 ### Save/Train datastores
 
@@ -82,7 +75,7 @@ python -m scripts.run_all \
     --prompts_path data/dexperts/prompts/nontoxic_prompts-10k.jsonl \
     --model_name gpt2-large \
     --batch_size 4 \
-    --lmbda 2.0 \  # = alpha in the paper
+    --lmbda 2.0 \  #  = alpha in the paper
     --knn_temp 100 \
     --perspective_rate_limit 30 \
     --dstore_dir checkpoints/gpt2-large/gpt2_toxicity_gte0.5_clean \  # Toxic dstore
@@ -99,6 +92,7 @@ Other parameters/setups you may want:
 - To change the top-p filtering before ensemble: `--filter_p 0.8`
 - If you want to use a single datastore just use the `dstore_dir` parameter.
 - If you want to evaluate the raw model: run the command above until the line `--perspective_rate_limit`
+- If you want to debug your generations and sentences being retrieved add: `--debug True`
 
 
 ### DExperts experiments
