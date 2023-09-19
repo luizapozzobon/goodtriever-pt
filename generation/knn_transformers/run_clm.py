@@ -21,7 +21,6 @@ https://huggingface.co/models?filter=causal-lm
 """
 # You can also adapt this script on your own causal language modeling task. Pointers for this are left as comments.
 
-import itertools
 import logging
 import math
 import os
@@ -30,7 +29,6 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import datasets
-import torch
 import transformers
 from datasets import load_dataset
 from tqdm import tqdm
@@ -52,8 +50,7 @@ from transformers.trainer_utils import get_last_checkpoint
 from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
 
-from knn_transformers.knnlm import DIST, KEY_TYPE, KNNSaver, KNNWrapper
-from knn_transformers.retomaton import RetomatonWrapper
+from generation.knn_transformers.knnlm import DIST, KEY_TYPE, KNNSaver, KNNWrapper
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.11.0.dev0")
@@ -257,16 +254,6 @@ class KNNArguments:
     move_dstore_to_mem: bool = field(default=True)
     no_load_keys: bool = field(default=True)
     recompute_dists: bool = field(default=False)
-
-    ## RetoMaton args:
-    retomaton: bool = field(default=False)
-    cluster_dstore: bool = field(default=False)
-    no_pointer: bool = field(default=False)
-    min_knns: int = field(default=1)
-    max_knns: int = field(default=1024)
-    num_clusters: int = field(default=500000)
-    sample_size: int = field(default=20000000)
-    members: str = field(default=None)
     limit_eval_to_dstore: bool = field(default=False)
 
 
@@ -627,27 +614,7 @@ def main():
         else None,
     )
 
-    if knn_args.retomaton or knn_args.cluster_dstore:
-        knn_wrapper = RetomatonWrapper(
-            dstore_size=knn_args.dstore_size,
-            dstore_dir=knn_args.dstore_dir,
-            dimension=dimension,
-            knn_sim_func=knn_args.knn_sim_func,
-            knn_keytype=knn_args.knn_keytype,
-            no_load_keys=knn_args.no_load_keys,
-            move_dstore_to_mem=knn_args.move_dstore_to_mem,
-            knn_gpu=knn_args.knn_gpu,
-            recompute_dists=knn_args.recompute_dists,
-            k=knn_args.k,
-            lmbda=knn_args.lmbda,
-            knn_temp=knn_args.knn_temp,
-            probe=knn_args.probe,
-            no_pointer=knn_args.no_pointer,
-            min_knns=knn_args.min_knns,
-            max_knns=knn_args.max_knns,
-            members=knn_args.members,
-        )
-    elif knn_args.knn:
+    if knn_args.knn:
         knn_wrapper = KNNWrapper(
             dstore_dir=knn_args.dstore_dir,
             dimension=dimension,
@@ -740,11 +707,6 @@ def main():
 
     if knn_args.build_index:
         knn_wrapper.build_index()
-
-    if knn_args.cluster_dstore:
-        knn_wrapper.cluster_dstore(
-            num_clusters=knn_args.num_clusters, sample_size=knn_args.sample_size, model=model
-        )
 
     if knn_wrapper is not None:
         knn_wrapper.break_out()

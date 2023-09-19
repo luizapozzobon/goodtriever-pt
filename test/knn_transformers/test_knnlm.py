@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from knn_transformers.knnlm import KNNWrapper
+from generation.knn_transformers.knnlm import KNNWrapper
 
 
 @pytest.fixture

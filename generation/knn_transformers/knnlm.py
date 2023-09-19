@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from transformers import AutoTokenizer, top_k_top_p_filtering
 
-from knn_transformers.datastore import DIST, Datastore
+from generation.knn_transformers.datastore import DIST, Datastore
 
 logger = logging.getLogger(__name__)
 logger.setLevel(20)
@@ -563,8 +563,3 @@ class ActivationCapturer(nn.Module):
             self.captured = input[0].detach()
         else:
             self.captured = output.detach()
-
-
-# Keeping here for compatibility with Retomaton file
-def get_dstore_path(dstore_dir, model_type, dstore_size, dimension):
-    return f"{dstore_dir}/dstore_{model_type}_{dstore_size}_{dimension}"
