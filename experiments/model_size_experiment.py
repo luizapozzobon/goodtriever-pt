@@ -79,7 +79,7 @@ def main(
             continue
 
         ds_cmd = f"""
-            python -u -m knn_transformers.run_clm \
+            python -u -m generation.knn_transformers.run_clm \
                 --model_name_or_path {model_name} \
                 --train_file {train_file} \
                 --eval_subset train \
@@ -90,7 +90,7 @@ def main(
         """
 
         train_cmd = f"""
-            python -u -m knn_transformers.run_clm \
+            python -u -m generation.knn_transformers.run_clm \
                 --model_name_or_path {model_name} \
                 --train_file {train_file} \
                 --eval_subset train \
