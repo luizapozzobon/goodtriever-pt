@@ -8,6 +8,7 @@ dependencies:
   - google-api-python-client
   - pip
   - ipython
+  - git-lfs
   - pip:
     - pip-tools
     - -r requirements.txt
