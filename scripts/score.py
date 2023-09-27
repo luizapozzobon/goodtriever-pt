@@ -4,7 +4,7 @@ Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 import fire
 import numpy as np
