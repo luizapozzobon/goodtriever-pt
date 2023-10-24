@@ -86,6 +86,7 @@ def train_expert(
     log_folder="logs/",
     done=False,
 ):
+    """Train DExperts expert (either toxic or non-toxic)."""
     expert_path = output_folder / model_name / expert_name
 
     if done:
@@ -109,8 +110,6 @@ def train_expert(
             --train_data_file {train_file} \
             --overwrite_cache | tee -a {log_folder}
     """
-    # TODO check log with tee
-
     run(train_cmd)
 
     return expert_path
@@ -141,11 +140,10 @@ def main(
     model_name: str = "gpt2-large",
     toxicity_choices: Tuple = ("toxic", "nontoxic"),
     prompts_path: str = "data/continual_mitigation/prompts/wilds_5_clusters_200_samples_toxic.jsonl",
-    rtp_prompts_path: str = "data/dexperts/prompts/nontoxic_prompts-10k.jsonl",
     train_folder: str = "data/continual_mitigation/domains/train",
     output_folder: str = "outputs/experiments/continual_learning",
     experiment_name: str = "continual_mitigation",
-    rate_limit: str = 90,
+    perspective_rate_limit: str = 90,
     batch_size: int = 4,
     group_toxicity_by: str = "domain",
     kind: str = "knn",
@@ -155,6 +153,43 @@ def main(
     num_prompts: Optional[int] = None,
     multitask: Optional[bool] = False,
 ):
+    """Run continual learning experiments.
+
+    Args:
+        domains (Optional[Tuple], optional): The list of domains. If None,
+            they will be inferred from files. Defaults to None.
+        model_name (str, optional): Base model. Defaults to "gpt2-large".
+        toxicity_choices (Tuple, optional): Which datastores will be continually improved.
+            Defaults to ("toxic", "nontoxic").
+        prompts_path (str, optional): Path to main prompts file.
+            Defaults to "data/continual_mitigation/prompts/wilds_5_clusters_200_samples_toxic.jsonl".
+        train_folder (str, optional): Folder that contains all training files.
+            Defaults to "data/continual_mitigation/domains/train".
+        output_folder (str, optional): Folder to save experiments output.
+            Defaults to "outputs/experiments/continual_learning".
+        experiment_name (str, optional): Experiment name will create a new folder inside `output_folder`.
+            Defaults to "continual_mitigation".
+        perspective_rate_limit (str, optional): Perspective API rate limit. Defaults to 90.
+        batch_size (int, optional): Batch size for inference. Defaults to 4.
+        group_toxicity_by (str, optional): This column should be in the prompts file and
+            it is used to compute domain-specific toxicity metrics. Defaults to "domain".
+        kind (str, optional): Options are ('knn', 'dexperts'). Defaults to "knn".
+        pretrained_toxic (Optional[str], optional): Path to a pretrained
+            toxic datastore or expert. Defaults to None.
+        pretrained_nontoxic (Optional[str], optional): Path to a pretrained
+            nontoxic datastore or expert. Defaults to None.
+        dstore_size (Optional[int], optional): Set if you want to limit datastore size.
+            Defaults to None.
+        num_prompts (Optional[int], optional): Number of prompts to be evaluated.
+            If None, will use all. Defaults to None.
+        multitask (Optional[bool], optional): If True, DExperts will be run
+            in the continual learning manner. At every step, experts will be
+            trained with all data available. Defaults to False.
+
+    Raises:
+        NotImplementedError: If you set an invalid `kind`.
+
+    """
     # Folder setup
     output_folder = setup_output_folder(
         output_folder,
@@ -171,6 +206,8 @@ def main(
 
     # Logger setup
     (output_folder / "logs").mkdir(parents=True, exist_ok=True)
+    # Check which domains were already processed if the command has been run before
+    # This will be used to skip training if it was already done before.
     done_domains = (
         open(output_folder / "logs/done_domains.txt").readlines()
         if (output_folder / "logs/done_domains.txt").exists()
@@ -257,7 +294,7 @@ def main(
                         done=done,
                     )
                 else:
-                    raise RuntimeError("")
+                    raise NotImplementedError("`kind` should be either 'knn' or 'dexperts' ")
 
                 # We'll have every intermediate model saved
                 pretrained[toxicity] = path
@@ -272,10 +309,9 @@ def main(
                 output_folder=output_folder / f"domain={d}-{domain}",
                 model_name=model_name,
                 prompts_path=prompts_path,
-                rtp_prompts_path=rtp_prompts_path,
                 toxic_model=paths["toxic"],
                 nontoxic_model=paths["nontoxic"],
-                rate_limit=rate_limit,
+                perspective_rate_limit=perspective_rate_limit,
                 group_toxicity_by=group_toxicity_by,
                 num_prompts=num_prompts,
                 kind=kind,
