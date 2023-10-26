@@ -39,6 +39,7 @@ class DExpertsWrapper(KNNWrapper):
             self.expert.eval()
 
     def break_into(self, model):
+        """Break into model to enable ensemble of experts."""
         self.model = model
         model.broken_into = True
 
@@ -49,11 +50,14 @@ class DExpertsWrapper(KNNWrapper):
         model.forward = self.pre_forward_hook
 
         # Inject our main function after the model's final layer
+        # Main function = post_forward_hook
+        # It's where the ensemble of LM, expert and anti-expert logits happens.
         final_layer = KNNWrapper.get_model_last_layer(model.config.model_type)(model)
         self.register_hook(final_layer, self.post_forward_hook)
         self.vocab_size = final_layer.out_features
 
     def pre_forward_hook(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
+        """Access pre-forward pass to generate base LM, expert and anti-expert logits."""
         self.labels = labels
 
         self.expert_logits = None
@@ -73,6 +77,7 @@ class DExpertsWrapper(KNNWrapper):
         )
 
     def post_forward_hook(self, module, input, output):
+        """Ensemble base LM, expert and anti-expert logits after forward pass."""
         batch, time_dim, vocab_size = output.shape
         shift = 0 if self.is_encoder_decoder else 1
         lm_logits = output

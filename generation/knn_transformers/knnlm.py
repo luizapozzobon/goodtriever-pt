@@ -374,6 +374,7 @@ class KNNWrapper(object):
         if model_type.startswith("gpt2"):
             return lambda model: model.transformer.wte
 
+    # YOU CAN ADD MORE MODELS HERE!
     # For every model name and key type, returns a lambda that returns the relevant layer in the model,
     # and whether the input of that layer should be captured (True) or the output (False)
     model_layer_to_capture = {
