@@ -228,7 +228,7 @@ class KNNWrapper(object):
 
         if self.debug and self._first_gen:
             self.show_retrieved_context(
-                label="dstore", knns=knns, vals=self.datastore.vals, show_test_context=True
+                description="dstore", knns=knns, vals=self.datastore.vals, show_test_context=True
             )
 
         if self.other_datastore is not None:
@@ -246,7 +246,7 @@ class KNNWrapper(object):
 
                 if self.debug and self._first_gen:
                     self.show_retrieved_context(
-                        label="other_dstore",
+                        description="other_dstore",
                         knns=knns,
                         vals=self.other_datastore.vals,
                         show_test_context=False,
@@ -268,14 +268,34 @@ class KNNWrapper(object):
 
     def show_retrieved_context(
         self,
-        label,
+        description,
         knns,
         vals,
         show_context_tokens=30,
         num_neighbors=3,
         batch_idx=0,
-        show_test_context=True,
+        show_inference_context=True,
     ):
+        """Show sample of retrieved contexts from datastore on each forward pass.
+
+        When ensembling next-token probabilities, we'll retrieve the N closest neighbors
+        from each datastore. In this function you can print `num_neighbors` contexts
+        up to `show_context_tokens` length.
+
+        Args:
+            description (_type_): Description to identify from which datastore
+                the context came from.
+            knns (_type_): Retrieved neighbors indexes.
+            vals (_type_): Retrieved next-tokens.
+            show_context_tokens (int, optional): Number of tokens to show for
+                each retrieved context. Defaults to 30.
+            num_neighbors (int, optional): Number of nearest neighbors to show.
+                Defaults to 3.
+            batch_idx (int, optional): Which sample from the batch to show
+                neighbors for. Defaults to 0.
+            show_inference_context (bool, optional): To show the current
+                inference context or not. Defaults to True.
+        """
         neighbors_to_investigate = knns[batch_idx, :num_neighbors]
         context_tokens = torch.stack(
             [
@@ -287,11 +307,11 @@ class KNNWrapper(object):
         context = self._tokenizer.batch_decode(context_tokens)
         vals = self._tokenizer.batch_decode(vals[knns][batch_idx, :num_neighbors])
 
-        if show_test_context:
-            test_context = self._tokenizer.decode(self.input_ids[batch_idx])
-            print(f"==== Test Context: {test_context}")
+        if show_inference_context:
+            inference_context = self._tokenizer.decode(self.input_ids[batch_idx])
+            print(f"==== Test Context: {inference_context}")
 
-        print(f"---- {label} - Contexts and Next Tokens: ")
+        print(f"---- {description} - Contexts and Next Tokens: ")
         for i, (c, v) in enumerate(zip(context, vals)):
             print(f"{i+1}) {c} // {v}")
 
