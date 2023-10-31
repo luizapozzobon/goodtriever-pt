@@ -35,7 +35,9 @@ def build_dstore(
         return output_folder
 
     if pretrained_path is not None:
-        logger.info(f"Copying base {toxicity} dstore from {pretrained_path} to {output_folder}.")
+        logger.info(
+            f"Copying base {toxicity} dstore from {pretrained_path} to {output_folder}."
+        )
         subprocess.run(f"cp -r {pretrained_path}/* {output_folder}/", shell=True)
         logger.info(f"Base {toxicity} dstore copied.")
 
@@ -115,9 +117,13 @@ def train_expert(
     return expert_path
 
 
-def setup_output_folder(output_folder, toxicity_choices, experiment_name, model_name, kind):
+def setup_output_folder(
+    output_folder, toxicity_choices, experiment_name, model_name, kind
+):
     if not all(choice in ["toxic", "nontoxic"] for choice in toxicity_choices):
-        raise ValueError("`toxicity_choices` should contain only 'toxic' or 'nontoxic'.")
+        raise ValueError(
+            "`toxicity_choices` should contain only 'toxic' or 'nontoxic'."
+        )
 
     # Toxicity and dstores setup
     toxic_added = True if "toxic" in toxicity_choices else False
@@ -240,7 +246,9 @@ def main(
                     logger.info(f"Skipped {domain}, {toxicity} build or train")
                     done = True
 
-                logger.info(f"Domain ({d}/{len(domains)}): {domain} // Toxicity: {toxicity}")
+                logger.info(
+                    f"Domain ({d}/{len(domains)}): {domain} // Toxicity: {toxicity}"
+                )
 
                 try:
                     file = [f for f in files[toxicity] if domain in str(f)][0]
@@ -259,7 +267,9 @@ def main(
 
                     if d > 0:
                         previous_df = pd.read_json(multitask_files[toxicity].name)
-                        logger.info(f"Previously saved number of samples: {previous_df.shape[0]}")
+                        logger.info(
+                            f"Previously saved number of samples: {previous_df.shape[0]}"
+                        )
                         curr_df = pd.concat([previous_df, curr_df], axis=0)
                         curr_df = curr_df.reset_index(drop=True)
                         logger.info(f"New number of samples: {curr_df.shape[0]}")
@@ -269,7 +279,9 @@ def main(
                     file = multitask_files[toxicity].name
 
                 # We have to run even if done=True to get the dstore/model path
-                model_path = output_folder / f"domain={d}-{domain}/checkpoints/{toxicity}"
+                model_path = (
+                    output_folder / f"domain={d}-{domain}/checkpoints/{toxicity}"
+                )
                 if kind == "knn":
                     path = build_dstore(
                         output_folder=model_path,
@@ -294,7 +306,9 @@ def main(
                         done=done,
                     )
                 else:
-                    raise NotImplementedError("`kind` should be either 'knn' or 'dexperts' ")
+                    raise NotImplementedError(
+                        "`kind` should be either 'knn' or 'dexperts' "
+                    )
 
                 # We'll have every intermediate model saved
                 pretrained[toxicity] = path

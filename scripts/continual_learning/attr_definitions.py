@@ -5,115 +5,92 @@ https://github.com/p-lambda/wilds/blob/main/dataset_preprocessing/civilcomments/
 
 """
 ORIG_ATTRS = [
-        'male',
-        'female',
-        'transgender',
-        'other_gender',
-        'heterosexual',
-        'homosexual_gay_or_lesbian',
-        'bisexual',
-        'other_sexual_orientation',
-        'christian',
-        'jewish',
-        'muslim',
-        'hindu',
-        'buddhist',
-        'atheist',
-        'other_religion',
-        'black',
-        'white',
-        'asian',
-        'latino',
-        'other_race_or_ethnicity',
-        'physical_disability',
-        'intellectual_or_learning_disability',
-        'psychiatric_or_mental_illness',
-        'other_disability',
-    ]
+    "male",
+    "female",
+    "transgender",
+    "other_gender",
+    "heterosexual",
+    "homosexual_gay_or_lesbian",
+    "bisexual",
+    "other_sexual_orientation",
+    "christian",
+    "jewish",
+    "muslim",
+    "hindu",
+    "buddhist",
+    "atheist",
+    "other_religion",
+    "black",
+    "white",
+    "asian",
+    "latino",
+    "other_race_or_ethnicity",
+    "physical_disability",
+    "intellectual_or_learning_disability",
+    "psychiatric_or_mental_illness",
+    "other_disability",
+]
 
 AGGREGATE_ATTRS = {
-    'LGBTQ': [
-        'homosexual_gay_or_lesbian',
-        'bisexual',
-        'other_sexual_orientation',
-        'transgender',
-        'other_gender'],
-    'other_religions': [
-        'jewish',
-        'hindu',
-        'buddhist',
-        'atheist',
-        'other_religion'
+    "LGBTQ": [
+        "homosexual_gay_or_lesbian",
+        "bisexual",
+        "other_sexual_orientation",
+        "transgender",
+        "other_gender",
     ],
-    'asian_latino_etc': [
-        'asian',
-        'latino',
-        'other_race_or_ethnicity'
+    "other_religions": ["jewish", "hindu", "buddhist", "atheist", "other_religion"],
+    "asian_latino_etc": ["asian", "latino", "other_race_or_ethnicity"],
+    "disability_any": [
+        "physical_disability",
+        "intellectual_or_learning_disability",
+        "psychiatric_or_mental_illness",
+        "other_disability",
     ],
-    'disability_any': [
-        'physical_disability',
-        'intellectual_or_learning_disability',
-        'psychiatric_or_mental_illness',
-        'other_disability',
-    ],
-    'identity_any': ORIG_ATTRS,
+    "identity_any": ORIG_ATTRS,
 }
 
 # ADDED - continual toxicity mitigation
 NONAGGREGATE_ATTRS = {
-    'male': [
-        'male'
+    "male": ["male"],
+    "female": ["female"],
+    "christian": [
+        "christian",
     ],
-    'female': [
-        'female'
+    "muslim": [
+        "muslim",
     ],
-    'christian': [
-        'christian',
-    ],
-    'muslim': [
-        'muslim',
-    ],
-    'white': [
-        'white'
-    ],
-    'black': [
-        'black'
-    ],
+    "white": ["white"],
+    "black": ["black"],
 }
 
 GROUP_ATTRS = {
-    'gender': [
-        'male',
-        'female',
-        'transgender',
-        'other_gender',
+    "gender": [
+        "male",
+        "female",
+        "transgender",
+        "other_gender",
     ],
-    'orientation': [
-        'heterosexual',
-        'homosexual_gay_or_lesbian',
-        'bisexual',
-        'other_sexual_orientation',
+    "orientation": [
+        "heterosexual",
+        "homosexual_gay_or_lesbian",
+        "bisexual",
+        "other_sexual_orientation",
     ],
-    'religion': [
-        'christian',
-        'jewish',
-        'muslim',
-        'hindu',
-        'buddhist',
-        'atheist',
-        'other_religion'
+    "religion": [
+        "christian",
+        "jewish",
+        "muslim",
+        "hindu",
+        "buddhist",
+        "atheist",
+        "other_religion",
     ],
-    'race': [
-        'black',
-        'white',
-        'asian',
-        'latino',
-        'other_race_or_ethnicity'
+    "race": ["black", "white", "asian", "latino", "other_race_or_ethnicity"],
+    "disability": [
+        "physical_disability",
+        "intellectual_or_learning_disability",
+        "psychiatric_or_mental_illness",
+        "other_disability",
     ],
-    'disability': [
-        'physical_disability',
-        'intellectual_or_learning_disability',
-        'psychiatric_or_mental_illness',
-        'other_disability',
-    ]
 }

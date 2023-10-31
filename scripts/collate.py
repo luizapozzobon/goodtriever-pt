@@ -37,7 +37,12 @@ def collate(
     """Collate generations texts with their scores by perspective API."""
     generations_col_iter = make_generations_col(generations, responses)
     generations_col = list(
-        tqdm(generations_col_iter, total=len(generations), desc="Collating files", position=1)
+        tqdm(
+            generations_col_iter,
+            total=len(generations),
+            desc="Collating files",
+            position=1,
+        )
     )
     dataset = pd.DataFrame(generations_col)
 
@@ -101,7 +106,9 @@ def main(
     elif isinstance(generations[column_name].iloc[0], list):
         gen_list = np.stack(
             generations[column_name].apply(
-                lambda xs: [x.get("text", "") for x in xs] if isinstance(xs[0], dict) else xs
+                lambda xs: [x.get("text", "") for x in xs]
+                if isinstance(xs[0], dict)
+                else xs
             )
         )
     else:
@@ -117,15 +124,21 @@ def main(
         )
 
     # Generate indexes based on original prompts
-    prompt_indexes = np.repeat(generations.index.values, num_gens) if num_gens > 1 else None
-    prompts = pd.read_json(prompts_path, lines=True) if prompt_indexes is not None else None
+    prompt_indexes = (
+        np.repeat(generations.index.values, num_gens) if num_gens > 1 else None
+    )
+    prompts = (
+        pd.read_json(prompts_path, lines=True) if prompt_indexes is not None else None
+    )
 
     if prompts is not None and not generations.index.equals(prompts.index):
         warnings.warn("Generations and Prompts indexes do not match.")
 
     scores = pd.read_json(scores_path, lines=True, chunksize=chunksize)
     lines = 0
-    for chunk_idx, chunk in enumerate(tqdm(scores, desc="Collating chunks", position=0)):
+    for chunk_idx, chunk in enumerate(
+        tqdm(scores, desc="Collating chunks", position=0)
+    ):
         start = chunksize * chunk_idx
         end = start + chunksize
         indexes = prompt_indexes[start:end] if prompt_indexes is not None else None

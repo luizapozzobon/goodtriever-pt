@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 def cleanup(func):
     """Empty cache from cuda and system."""
+
     def wrapper(*args, **kwargs):
         start_time = time.time()
         func(*args, **kwargs)
@@ -65,6 +66,7 @@ def evaluate(
 
 def extract_domains_from_file_list(file_list):
     """Extract domains from files found within a filename pattern."""
+
     def _extract_domain(text):
         pattern = r"identity_(.*?)_(toxic|nontoxic)\.json"
         matches = re.findall(pattern, text)

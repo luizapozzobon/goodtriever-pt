@@ -48,7 +48,9 @@ def main(
         nontoxic = custom[custom["toxicity"] <= nontoxic_threshold]
 
         toxic_ds = pd.concat([toxic_ds, pd.DataFrame(toxic["text"], columns=["text"])])
-        nontoxic_ds = pd.concat([nontoxic_ds, pd.DataFrame(nontoxic["text"], columns=["text"])])
+        nontoxic_ds = pd.concat(
+            [nontoxic_ds, pd.DataFrame(nontoxic["text"], columns=["text"])]
+        )
 
     if use_paradetox:
         dataset = load_dataset("s-nlp/paradetox")
@@ -67,23 +69,30 @@ def main(
         nontoxic_mask = np.array(dataset["prompt_label"]) < nontoxic_threshold
 
         prompts = np.array(dataset["prompt"])
-        toxic = np.stack([s for p in prompts[toxic_mask] for s in p.split("\\n- ")]).reshape(-1)
-        nontoxic = np.stack([s for p in prompts[nontoxic_mask] for s in p.split("\\n- ")]).reshape(
-            -1
-        )
+        toxic = np.stack(
+            [s for p in prompts[toxic_mask] for s in p.split("\\n- ")]
+        ).reshape(-1)
+        nontoxic = np.stack(
+            [s for p in prompts[nontoxic_mask] for s in p.split("\\n- ")]
+        ).reshape(-1)
         toxic = pd.DataFrame(toxic, columns=["text"]).drop_duplicates()
         nontoxic = pd.DataFrame(nontoxic, columns=["text"]).drop_duplicates()
 
         gens = np.array(dataset["generation"])
 
         toxic = pd.concat([toxic, pd.DataFrame(gens[toxic_mask], columns=["text"])])
-        nontoxic = pd.concat([nontoxic, pd.DataFrame(gens[nontoxic_mask], columns=["text"])])
+        nontoxic = pd.concat(
+            [nontoxic, pd.DataFrame(gens[nontoxic_mask], columns=["text"])]
+        )
 
         toxic["text"] = (
             toxic["text"].str.replace(r"\\n", "", regex=True).str.strip("-").str.strip()
         )
         nontoxic["text"] = (
-            nontoxic["text"].str.replace(r"\\n", "", regex=True).str.strip("-").str.strip()
+            nontoxic["text"]
+            .str.replace(r"\\n", "", regex=True)
+            .str.strip("-")
+            .str.strip()
         )
 
         toxic_ds = pd.concat([toxic_ds, toxic])

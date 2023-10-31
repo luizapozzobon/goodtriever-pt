@@ -22,7 +22,9 @@ def nontoxic_logits():
 
 def test_interpolate(lm_logits, toxic_logits, lmbda=0.25):
     probs_sanity = KNNWrapper.interpolate(lm_logits, lm_logits, lmbda).exp().squeeze(0)
-    probs_toxic = KNNWrapper.interpolate(lm_logits, toxic_logits, lmbda).exp().squeeze(0)
+    probs_toxic = (
+        KNNWrapper.interpolate(lm_logits, toxic_logits, lmbda).exp().squeeze(0)
+    )
 
     assert np.isclose(probs_sanity.sum().round(decimals=1), 1), "Probs should sum to 1."
     assert np.isclose(probs_toxic.sum().round(decimals=1), 1), "Probs should sum to 1."
@@ -38,9 +40,13 @@ def test_interpolate(lm_logits, toxic_logits, lmbda=0.25):
 
 
 def test_interpolate_discourage(lm_logits, toxic_logits, lmbda=0.25):
-    probs_sanity = KNNWrapper.interpolate_discourage(lm_logits, lm_logits, lmbda).exp().squeeze(0)
+    probs_sanity = (
+        KNNWrapper.interpolate_discourage(lm_logits, lm_logits, lmbda).exp().squeeze(0)
+    )
     probs_toxic = (
-        KNNWrapper.interpolate_discourage(lm_logits, toxic_logits, lmbda).exp().squeeze(0)
+        KNNWrapper.interpolate_discourage(lm_logits, toxic_logits, lmbda)
+        .exp()
+        .squeeze(0)
     )
 
     assert np.isclose(probs_sanity.sum().round(decimals=1), 1), "Probs should sum to 1."
@@ -60,12 +66,16 @@ def test_ensemble(lm_logits, toxic_logits, nontoxic_logits, lmbda=2.0):
     """Test ensemble equation for different cases."""
     ## Sanity
     probs_sanity = (
-        KNNWrapper.ensemble(lm_logits, *(lm_logits, lm_logits), lmbda=lmbda).exp().squeeze(0)
+        KNNWrapper.ensemble(lm_logits, *(lm_logits, lm_logits), lmbda=lmbda)
+        .exp()
+        .squeeze(0)
     )
 
     ## Only toxic
     probs_toxic_ds = (
-        KNNWrapper.ensemble(lm_logits, *(toxic_logits, lm_logits), lmbda=lmbda).exp().squeeze(0)
+        KNNWrapper.ensemble(lm_logits, *(toxic_logits, lm_logits), lmbda=lmbda)
+        .exp()
+        .squeeze(0)
     )
     # Only toxic but not sending lm_logits
     probs_toxic_ds_2 = (
@@ -75,7 +85,9 @@ def test_ensemble(lm_logits, toxic_logits, nontoxic_logits, lmbda=2.0):
     ## Only non-toxic
     # This is currently not possible in the code
     probs_nontoxic_ds = (
-        KNNWrapper.ensemble(lm_logits, *(lm_logits, nontoxic_logits), lmbda=lmbda).exp().squeeze(0)
+        KNNWrapper.ensemble(lm_logits, *(lm_logits, nontoxic_logits), lmbda=lmbda)
+        .exp()
+        .squeeze(0)
     )
 
     ## Both

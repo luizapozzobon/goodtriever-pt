@@ -59,7 +59,9 @@ def main(parser: Optional = None) -> Iterable:
 
     if gen_args.use_eos:
         if gen_args.model_name in ALLOWED_MODELS:
-            df = np.repeat(pd.Series("<|endoftext|>", name="text"), gen_args.eos_samples)
+            df = np.repeat(
+                pd.Series("<|endoftext|>", name="text"), gen_args.eos_samples
+            )
             df = df.to_frame().reset_index(drop=True)
         else:
             raise NotImplementedError(

@@ -55,7 +55,8 @@ from generation.knn_transformers.knnlm import DIST, KEY_TYPE, KNNSaver, KNNWrapp
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.11.0.dev0")
 require_version(
-    "datasets>=1.8.0", "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt"
+    "datasets>=1.8.0",
+    "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt",
 )
 logger = logging.getLogger(__name__)
 
@@ -95,11 +96,15 @@ class ModelArguments:
     )
     config_name: Optional[str] = field(
         default=None,
-        metadata={"help": "Pretrained config name or path if not the same as model_name"},
+        metadata={
+            "help": "Pretrained config name or path if not the same as model_name"
+        },
     )
     tokenizer_name: Optional[str] = field(
         default=None,
-        metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"},
+        metadata={
+            "help": "Pretrained tokenizer name or path if not the same as model_name"
+        },
     )
     cache_dir: Optional[str] = field(
         default=None,
@@ -185,7 +190,8 @@ class DataTrainingArguments:
         },
     )
     overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
+        default=False,
+        metadata={"help": "Overwrite the cached training and evaluation sets"},
     )
     validation_split_percentage: Optional[int] = field(
         default=5,
@@ -198,7 +204,8 @@ class DataTrainingArguments:
         metadata={"help": "The number of processes to use for the preprocessing."},
     )
     keep_linebreaks: bool = field(
-        default=True, metadata={"help": "Whether to keep line breaks when using TXT files or not."}
+        default=True,
+        metadata={"help": "Whether to keep line breaks when using TXT files or not."},
     )
 
     eval_subset: str = field(default="validation")
@@ -207,8 +214,14 @@ class DataTrainingArguments:
     prompt: str = field(default=None)
 
     def __post_init__(self):
-        if self.dataset_name is None and self.train_file is None and self.validation_file is None:
-            raise ValueError("Need either a dataset name or a training/validation file.")
+        if (
+            self.dataset_name is None
+            and self.train_file is None
+            and self.validation_file is None
+        ):
+            raise ValueError(
+                "Need either a dataset name or a training/validation file."
+            )
         else:
             if self.train_file is not None:
                 extension = self.train_file.split(".")[-1]
@@ -272,7 +285,12 @@ def main():
             json_file=os.path.abspath(sys.argv[1])
         )
     else:
-        model_args, data_args, training_args, knn_args = parser.parse_args_into_dataclasses()
+        (
+            model_args,
+            data_args,
+            training_args,
+            knn_args,
+        ) = parser.parse_args_into_dataclasses()
 
     # Setup logging
     logging.basicConfig(
@@ -309,7 +327,9 @@ def main():
                 f"Output directory ({training_args.output_dir}) already exists and is not empty. "
                 "Use --overwrite_output_dir to overcome."
             )
-        elif last_checkpoint is not None and training_args.resume_from_checkpoint is None:
+        elif (
+            last_checkpoint is not None and training_args.resume_from_checkpoint is None
+        ):
             logger.info(
                 f"Checkpoint detected, resuming training at {last_checkpoint}. To avoid this behavior, change "
                 "the `--output_dir` or add `--overwrite_output_dir` to train from scratch."
@@ -330,7 +350,9 @@ def main():
     if data_args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
         raw_datasets = load_dataset(
-            data_args.dataset_name, data_args.dataset_config_name, cache_dir=model_args.cache_dir
+            data_args.dataset_name,
+            data_args.dataset_config_name,
+            cache_dir=model_args.cache_dir,
         )
         if "validation" not in raw_datasets.keys():
             raw_datasets["validation"] = load_dataset(
@@ -361,7 +383,10 @@ def main():
             extension = "text"
             dataset_args["keep_linebreaks"] = data_args.keep_linebreaks
         raw_datasets = load_dataset(
-            extension, data_files=data_files, cache_dir=model_args.cache_dir, **dataset_args
+            extension,
+            data_files=data_files,
+            cache_dir=model_args.cache_dir,
+            **dataset_args,
         )
         # If no validation data is there, validation_split_percentage will be used to divide the dataset.
         if "validation" not in raw_datasets.keys():
@@ -401,7 +426,9 @@ def main():
     if model_args.config_name:
         config = AutoConfig.from_pretrained(model_args.config_name, **config_kwargs)
     elif model_args.model_name_or_path:
-        config = AutoConfig.from_pretrained(model_args.model_name_or_path, **config_kwargs)
+        config = AutoConfig.from_pretrained(
+            model_args.model_name_or_path, **config_kwargs
+        )
     else:
         config = CONFIG_MAPPING[model_args.model_type]()
         logger.warning("You are instantiating a new config instance from scratch.")
@@ -416,7 +443,9 @@ def main():
         "use_auth_token": True if model_args.use_auth_token else None,
     }
     if model_args.tokenizer_name:
-        tokenizer = AutoTokenizer.from_pretrained(model_args.tokenizer_name, **tokenizer_kwargs)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_args.tokenizer_name, **tokenizer_kwargs
+        )
     elif model_args.model_name_or_path:
         tokenizer = AutoTokenizer.from_pretrained(
             model_args.model_name_or_path, **tokenizer_kwargs
@@ -438,8 +467,12 @@ def main():
         )
     else:
         model = AutoModelForCausalLM.from_config(config)
-        n_params = sum(dict((p.data_ptr(), p.numel()) for p in model.parameters()).values())
-        logger.info(f"Training new model from scratch - Total size={n_params/2**20:.2f}M params")
+        n_params = sum(
+            dict((p.data_ptr(), p.numel()) for p in model.parameters()).values()
+        )
+        logger.info(
+            f"Training new model from scratch - Total size={n_params/2**20:.2f}M params"
+        )
 
     model.resize_token_embeddings(len(tokenizer))
 
@@ -457,7 +490,9 @@ def main():
     text_column_name = "text" if "text" in column_names else column_names[0]
 
     # since this will be pickled to avoid _LazyModule error in Hasher force logger loading before tokenize_function
-    tok_logger = transformers.utils.logging.get_logger("transformers.tokenization_utils_base")
+    tok_logger = transformers.utils.logging.get_logger(
+        "transformers.tokenization_utils_base"
+    )
 
     def tokenize_function(examples):
         with CaptureLogger(tok_logger) as cl:
@@ -548,7 +583,11 @@ def main():
             attention_mask.append([1] * len(cur_labels))
             labels.append(cur_labels)
 
-        result = {"input_ids": input_ids, "labels": labels, "attention_mask": attention_mask}
+        result = {
+            "input_ids": input_ids,
+            "labels": labels,
+            "attention_mask": attention_mask,
+        }
         return result
 
     # Note that with `batched=True`, this map processes 1,000 texts together, so group_texts throws away a remainder
@@ -697,7 +736,9 @@ def main():
 
     if data_args.prompt is not None:
         generated_ids = model.generate(
-            tokenizer.encode(data_args.prompt, return_tensors="pt").to(training_args.device),
+            tokenizer.encode(data_args.prompt, return_tensors="pt").to(
+                training_args.device
+            ),
             num_beams=5,
             num_return_sequences=5,
             do_sample=True,

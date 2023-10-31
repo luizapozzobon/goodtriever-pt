@@ -70,15 +70,21 @@ class ModelArguments:
     )
     config_name: Optional[str] = field(
         default=None,
-        metadata={"help": "Pretrained config name or path if not the same as model_name"},
+        metadata={
+            "help": "Pretrained config name or path if not the same as model_name"
+        },
     )
     tokenizer_name: Optional[str] = field(
         default=None,
-        metadata={"help": "Pretrained tokenizer name or path if not the same as model_name"},
+        metadata={
+            "help": "Pretrained tokenizer name or path if not the same as model_name"
+        },
     )
     cache_dir: Optional[str] = field(
         default=None,
-        metadata={"help": "Where do you want to store the pretrained models downloaded from s3"},
+        metadata={
+            "help": "Where do you want to store the pretrained models downloaded from s3"
+        },
     )
 
 
@@ -124,11 +130,14 @@ class DataTrainingArguments:
         },
     )
     overwrite_cache: bool = field(
-        default=False, metadata={"help": "Overwrite the cached training and evaluation sets"}
+        default=False,
+        metadata={"help": "Overwrite the cached training and evaluation sets"},
     )
 
 
-def get_dataset(args: DataTrainingArguments, tokenizer: PreTrainedTokenizer, evaluate=False):
+def get_dataset(
+    args: DataTrainingArguments, tokenizer: PreTrainedTokenizer, evaluate=False
+):
     file_path = args.eval_data_file if evaluate else args.train_data_file
     if args.line_by_line:
         return LineByLineTextDataset(
@@ -148,7 +157,9 @@ def main():
     # or by passing the --help flag to this script.
     # We now keep distinct sets of args, for a cleaner separation of concerns.
 
-    parser = HfArgumentParser((ModelArguments, DataTrainingArguments, TrainingArguments))
+    parser = HfArgumentParser(
+        (ModelArguments, DataTrainingArguments, TrainingArguments)
+    )
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     if data_args.eval_data_file is None and training_args.do_eval:
@@ -200,7 +211,9 @@ def main():
     # download model & vocab.
 
     if model_args.config_name:
-        config = AutoConfig.from_pretrained(model_args.config_name, cache_dir=model_args.cache_dir)
+        config = AutoConfig.from_pretrained(
+            model_args.config_name, cache_dir=model_args.cache_dir
+        )
     elif model_args.model_name_or_path:
         config = AutoConfig.from_pretrained(
             model_args.model_name_or_path, cache_dir=model_args.cache_dir
@@ -236,7 +249,10 @@ def main():
 
     model.resize_token_embeddings(len(tokenizer))
 
-    if config.model_type in ["bert", "roberta", "distilbert", "camembert"] and not data_args.mlm:
+    if (
+        config.model_type in ["bert", "roberta", "distilbert", "camembert"]
+        and not data_args.mlm
+    ):
         raise ValueError(
             "BERT and RoBERTa-like models do not have LM heads but masked LM heads. They must be run using the --mlm "
             "flag (masked language modeling)."
@@ -250,14 +266,18 @@ def main():
 
     # Get datasets
 
-    train_dataset = get_dataset(data_args, tokenizer=tokenizer) if training_args.do_train else None
+    train_dataset = (
+        get_dataset(data_args, tokenizer=tokenizer) if training_args.do_train else None
+    )
     eval_dataset = (
         get_dataset(data_args, tokenizer=tokenizer, evaluate=True)
         if training_args.do_eval
         else None
     )
     data_collator = DataCollatorForLanguageModeling(
-        tokenizer=tokenizer, mlm=data_args.mlm, mlm_probability=data_args.mlm_probability
+        tokenizer=tokenizer,
+        mlm=data_args.mlm,
+        mlm_probability=data_args.mlm_probability,
     )
 
     # Initialize our Trainer

@@ -17,10 +17,16 @@ def test_perplexity():
 
     """
     df = pd.DataFrame(
-        {"text": datasets.load_dataset("wikitext", "wikitext-2-raw-v1", split="test")["text"]}
+        {
+            "text": datasets.load_dataset(
+                "wikitext", "wikitext-2-raw-v1", split="test"
+            )["text"]
+        }
     )
     tf = tempfile.NamedTemporaryFile()
-    ppl = compute_ppl(df.iloc[:100], model_name="gpt2", output_file=Path(tf.name), prompted=False)
+    ppl = compute_ppl(
+        df.iloc[:100], model_name="gpt2", output_file=Path(tf.name), prompted=False
+    )
     results = pd.read_csv(tf.name, index_col=0)
 
     assert ppl.unprompted.perplexity <= 30

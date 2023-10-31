@@ -10,9 +10,11 @@ class GenerationParser:
 
     def __init__(self):
         parser = HfArgumentParser((GenerationArguments, KNNArguments))
-        self.gen_args, self.knn_args, self.other_strings = parser.parse_args_into_dataclasses(
-            return_remaining_strings=True
-        )
+        (
+            self.gen_args,
+            self.knn_args,
+            self.other_strings,
+        ) = parser.parse_args_into_dataclasses(return_remaining_strings=True)
 
         self.all_args = {
             "GenerationArguments": vars(self.gen_args),
@@ -34,7 +36,9 @@ class GenerationArguments:
     )
     model_name: str = field(
         default="gpt2-large",
-        metadata={"help": "Model to use from HuggingFace Hub. " "Defaults to 'gpt2-large'. "},
+        metadata={
+            "help": "Model to use from HuggingFace Hub. " "Defaults to 'gpt2-large'. "
+        },
     )
     num_return_sequences: int = field(
         default=25,
@@ -48,10 +52,13 @@ class GenerationArguments:
     )
     top_p: float = field(
         default=0.90,
-        metadata={"help": "Top-p for nucleus sampling (after ensemble). Defaults to 0.90."},
+        metadata={
+            "help": "Top-p for nucleus sampling (after ensemble). Defaults to 0.90."
+        },
     )
     batch_size: int = field(
-        default=16, metadata={"help": "Tokenization and generation batch size. Defaults to 16."}
+        default=16,
+        metadata={"help": "Tokenization and generation batch size. Defaults to 16."},
     )
     use_eos: bool = field(
         default=False,
@@ -72,7 +79,8 @@ class GenerationArguments:
         },
     )
     num_prompts: int = field(
-        default=None, metadata={"help": "Number of prompts to use. If None, will use all."}
+        default=None,
+        metadata={"help": "Number of prompts to use. If None, will use all."},
     )
 
 
@@ -82,7 +90,9 @@ class KNNArguments:
     Arguments pertaining retrieval-augmentation with kNN. Also supports DExperts experiments.
     """
 
-    knn: bool = field(default=False, metadata={"help": "To retrieve or not to retrieve."})
+    knn: bool = field(
+        default=False, metadata={"help": "To retrieve or not to retrieve."}
+    )
     dexperts: bool = field(
         default=False,
         metadata={
@@ -95,19 +105,26 @@ class KNNArguments:
             "help": "The size of the dstore. If None (recommended), it will be detected automatically."
         },
     )
-    knn_gpu: bool = field(default=True, metadata={"help": "To run kNN search on GPU or not."})
+    knn_gpu: bool = field(
+        default=True, metadata={"help": "To run kNN search on GPU or not."}
+    )
     knn_keytype: KEY_TYPE.from_string = field(
         default=KEY_TYPE.last_ffn_input,
-        metadata={"help": "The Key Type points to the layer to extract the datastore key from."},
+        metadata={
+            "help": "The Key Type points to the layer to extract the datastore key from."
+        },
     )
     dstore_dir: str = field(
-        default="checkpoints", metadata={"help": "The directory of the first dstore (toxic)."}
+        default="checkpoints",
+        metadata={"help": "The directory of the first dstore (toxic)."},
     )
     other_dstore_dir: str = field(
-        default=None, metadata={"help": "The directory of the second dstore (non-toxic)."}
+        default=None,
+        metadata={"help": "The directory of the second dstore (non-toxic)."},
     )
     k: int = field(
-        default=1024, metadata={"help": "The number of retrieved neighbors from the first dstore."}
+        default=1024,
+        metadata={"help": "The number of retrieved neighbors from the first dstore."},
     )
     other_k: int = field(
         default=None,
@@ -138,11 +155,14 @@ class KNNArguments:
         },
     )
     ncentroids: int = field(
-        default=4096, metadata={"help": "Number of centroids for quantized FAISS index."}
+        default=4096,
+        metadata={"help": "Number of centroids for quantized FAISS index."},
     )
     code_size: int = field(
         default=64,
-        metadata={"help": "The code_size is typically a power of two between 4 and 64."},
+        metadata={
+            "help": "The code_size is typically a power of two between 4 and 64."
+        },
     )
     probe: int = field(default=32, metadata={"help": "Number of probes at query time."})
     num_keys_to_add_at_a_time: int = field(
@@ -169,7 +189,9 @@ class KNNArguments:
             "help": "Ensemble method. Choices: `ensemble`, `interpolate`, `interpolate_discourage`"
         },
     )
-    filter_p: float = field(default=0.9, metadata={"help": "Top-p filtering (before ensemble)."})
+    filter_p: float = field(
+        default=0.9, metadata={"help": "Top-p filtering (before ensemble)."}
+    )
     ensemble_order: tuple = field(
         default=("subtract", "add"),
         metadata={

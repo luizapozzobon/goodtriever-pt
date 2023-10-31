@@ -11,5 +11,5 @@ def configure_logger(filename=None, level=logging.DEBUG):
         level=level,
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
-        handlers=handlers
+        handlers=handlers,
     )

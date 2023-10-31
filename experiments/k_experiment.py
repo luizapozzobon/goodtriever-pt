@@ -39,10 +39,18 @@ def main(
         rate_limit (int, optional): Perspective API Rate Limit. Defaults to 20.
 
     """
-    if isinstance(toxic_ks, Iterable) and nontoxic_ks is None or isinstance(nontoxic_ks, int):
+    if (
+        isinstance(toxic_ks, Iterable)
+        and nontoxic_ks is None
+        or isinstance(nontoxic_ks, int)
+    ):
         nontoxic_ks = [nontoxic_ks] * len(toxic_ks)
 
-    if isinstance(nontoxic_ks, Iterable) and toxic_ks is None or isinstance(toxic_ks, int):
+    if (
+        isinstance(nontoxic_ks, Iterable)
+        and toxic_ks is None
+        or isinstance(toxic_ks, int)
+    ):
         toxic_ks = [toxic_ks] * len(nontoxic_ks)
 
     assert len(toxic_ks) == len(
