@@ -12,7 +12,9 @@ from transformers import GPT2LMHeadModel, GPT2TokenizerFast
 from utils.utils import structure_output_filepath
 
 
-def compute_distinctness(generations_df: pd.DataFrame, output_file: Path) -> pd.DataFrame:
+def compute_distinctness(
+    generations_df: pd.DataFrame, output_file: Path
+) -> pd.DataFrame:
     """Compute distinctness (diversity) metrics for prompted generations.
 
     Generation diversity is measured using the mean number of distinct n-grams,
@@ -27,7 +29,9 @@ def compute_distinctness(generations_df: pd.DataFrame, output_file: Path) -> pd.
     dist1, dist2, dist3 = [], [], []
     # calculate dist1, dist2, dist3 across generations for every prompt
     for i, row in tqdm(
-        generations_df.iterrows(), total=len(generations_df.index), desc="Evaluating diversity"
+        generations_df.iterrows(),
+        total=len(generations_df.index),
+        desc="Evaluating diversity",
     ):
         generations = [g["text"] for g in row["generations"]]
         unigrams, bigrams, trigrams = set(), set(), set()
@@ -54,7 +58,10 @@ def compute_distinctness(generations_df: pd.DataFrame, output_file: Path) -> pd.
 
 
 def conditional_perplexity(
-    generations_df: pd.DataFrame, model: Callable, tokenizer: Callable, device: str = "cuda"
+    generations_df: pd.DataFrame,
+    model: Callable,
+    tokenizer: Callable,
+    device: str = "cuda",
 ):
     """Compute conditional perplexity for prompted generations.
 
@@ -65,7 +72,9 @@ def conditional_perplexity(
     perplexities = []
     # for every prompt
     for i, row in tqdm(
-        generations_df.iterrows(), total=len(generations_df.index), desc="Evaluating fluency"
+        generations_df.iterrows(),
+        total=len(generations_df.index),
+        desc="Evaluating fluency",
     ):
         prompt = row.prompt["text"]
         prompt_input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
@@ -75,7 +84,9 @@ def conditional_perplexity(
         # for every generation conditioned on the prompt
         generations = [g["text"] for g in row["generations"]]
         for gen in generations:
-            full_input_ids = tokenizer.encode(prompt + gen, return_tensors="pt").to(device)
+            full_input_ids = tokenizer.encode(prompt + gen, return_tensors="pt").to(
+                device
+            )
             full_loss = model(full_input_ids, labels=full_input_ids)[0] * (
                 full_input_ids.shape[1] - 1
             )
@@ -155,7 +166,9 @@ def compute_toxicity_prompted(
         toxicities = toxicities.apply(remove_none)
         toxicities = toxicities[toxicities.apply(len) > 0]
         max_toxicities = toxicities.apply(lambda x: max(x))
-        toxicity_proportion = toxicities.apply(lambda x: len([y for y in x if y > threshold]))
+        toxicity_proportion = toxicities.apply(
+            lambda x: len([y for y in x if y > threshold])
+        )
         results = {
             "avg_max": max_toxicities.mean(),
             "toxicity_probability": (toxicity_proportion >= 1).sum()
@@ -205,7 +218,11 @@ def compute_toxicity_prompted(
 
 
 def get_perplexity(
-    texts: List[str], model: Callable, tokenizer: Callable, device: str = "cuda", stride: int = 512
+    texts: List[str],
+    model: Callable,
+    tokenizer: Callable,
+    device: str = "cuda",
+    stride: int = 512,
 ):
     """Compute perplexity for a given list of texts, model and tokenizer.
 
@@ -316,8 +333,13 @@ def compute_ppl(
             condition_df = pd.json_normalize(df.prompt).query(query)
             condition_df = condition_df[condition_df["toxicity"].notna()]
 
-            if any(condition_df.shape[0] == shape for condition, shape in previous_shapes.items()):
-                print(f"Condition {condition} df has the same shape as a previous one. Skipping.")
+            if any(
+                condition_df.shape[0] == shape
+                for condition, shape in previous_shapes.items()
+            ):
+                print(
+                    f"Condition {condition} df has the same shape as a previous one. Skipping."
+                )
                 continue
             previous_shapes[condition] = condition_df.shape[0]
 
@@ -328,7 +350,9 @@ def compute_ppl(
 
             if not subdf.empty:
                 ppl[condition] = {
-                    "perplexity": conditional_perplexity(subdf, model, tokenizer, device="cuda")
+                    "perplexity": conditional_perplexity(
+                        subdf, model, tokenizer, device="cuda"
+                    )
                 }
     else:
         predictions = df.text.values
@@ -409,7 +433,9 @@ def main(
                             group_toxicity_by=group_toxicity_by,
                         )
                     else:
-                        compute_toxicity_unprompted(df, output_file, threshold=threshold)
+                        compute_toxicity_unprompted(
+                            df, output_file, threshold=threshold
+                        )
                 else:
                     warnings.warn(f"{output_file} already exists. Skipping.")
 

@@ -12,7 +12,10 @@ def test_structure_output_filepath():
 
     # Test generation step
     filename = structure_output_filepath(
-        step="generation", output_folder=output_folder, previous_filename=filename, mkdir=False
+        step="generation",
+        output_folder=output_folder,
+        previous_filename=filename,
+        mkdir=False,
     )
     assert filename == output_folder / "eos_gpt2_generations.jsonl"
 

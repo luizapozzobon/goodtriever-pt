@@ -74,11 +74,15 @@ class KNNWrapper(object):
         self._tokenizer = None  # Used only for debugging purposes
 
         self.knn_sim_func = DIST.l2 if knn_sim_func is None else knn_sim_func
-        self.knn_keytype = KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
+        self.knn_keytype = (
+            KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
+        )
         self.no_load_keys = no_load_keys
         self.recompute_dists = recompute_dists
         self.move_dstore_to_mem = move_dstore_to_mem
-        self.knn_gpu = knn_gpu and torch.cuda.is_available() and torch.cuda.device_count() > 0
+        self.knn_gpu = (
+            knn_gpu and torch.cuda.is_available() and torch.cuda.device_count() > 0
+        )
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.prompt_input_ids = None
@@ -134,7 +138,9 @@ class KNNWrapper(object):
                 no_load_keys=self.no_load_keys,
                 flat_index=self.flat_index,
             ).setup_faiss()
-            logger.info(f"Using `other_dstore_dir`. Size: {self.other_datastore.dstore_size}")
+            logger.info(
+                f"Using `other_dstore_dir`. Size: {self.other_datastore.dstore_size}"
+            )
         else:
             logger.info(f"Not using `other_dstore_dir`.")
 
@@ -167,7 +173,9 @@ class KNNWrapper(object):
         if self.debug:
             self._tokenizer = AutoTokenizer.from_pretrained(model.config._name_or_path)
 
-    def pre_forward_hook(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
+    def pre_forward_hook(
+        self, input_ids=None, attention_mask=None, labels=None, **kwargs
+    ):
         self.labels = labels
         self.input_ids = input_ids
         return self.original_forward_func(
@@ -178,7 +186,9 @@ class KNNWrapper(object):
         batch, time_dim, vocab_size = output.shape
         shift = 0 if self.is_encoder_decoder else 1
         lm_logits = output
-        lm_logits = torch.nn.functional.log_softmax(lm_logits, dim=-1)  # (batch, time, vocab)
+        lm_logits = torch.nn.functional.log_softmax(
+            lm_logits, dim=-1
+        )  # (batch, time, vocab)
 
         # From DExperts - adding this reduced perplexity a bit.
         if self.filter_p:
@@ -199,7 +209,9 @@ class KNNWrapper(object):
             nonpad_mask = torch.cat(
                 [
                     self.labels[:, shift:] != -100,
-                    torch.zeros([self.labels.shape[0], shift], dtype=torch.bool).to(self.device),
+                    torch.zeros([self.labels.shape[0], shift], dtype=torch.bool).to(
+                        self.device
+                    ),
                 ],
                 axis=-1,
             )
@@ -228,7 +240,10 @@ class KNNWrapper(object):
 
         if self.debug and self._first_gen:
             self.show_retrieved_context(
-                label="dstore", knns=knns, vals=self.datastore.vals, show_test_context=True
+                description="dstore",
+                knns=knns,
+                vals=self.datastore.vals,
+                show_test_context=True,
             )
 
         if self.other_datastore is not None:
@@ -246,7 +261,7 @@ class KNNWrapper(object):
 
                 if self.debug and self._first_gen:
                     self.show_retrieved_context(
-                        label="other_dstore",
+                        description="other_dstore",
                         knns=knns,
                         vals=self.other_datastore.vals,
                         show_test_context=False,
@@ -261,25 +276,50 @@ class KNNWrapper(object):
             knn_log_probs = (knn_log_probs,)
 
         interpolated_scores = self.method_func(
-            lm_logits, *knn_log_probs, lmbda=self.lmbda, ensemble_order=self.ds_ensemble_order
+            lm_logits,
+            *knn_log_probs,
+            lmbda=self.lmbda,
+            ensemble_order=self.ds_ensemble_order,
         )  # (nonpad, vocab)
 
         return interpolated_scores
 
     def show_retrieved_context(
         self,
-        label,
+        description,
         knns,
         vals,
         show_context_tokens=30,
         num_neighbors=3,
         batch_idx=0,
-        show_test_context=True,
+        show_inference_context=True,
     ):
+        """Show sample of retrieved contexts from datastore on each forward pass.
+
+        When ensembling next-token probabilities, we'll retrieve the N closest neighbors
+        from each datastore. In this function you can print `num_neighbors` contexts
+        up to `show_context_tokens` length.
+
+        Args:
+            description (_type_): Description to identify from which datastore
+                the context came from.
+            knns (_type_): Retrieved neighbors indexes.
+            vals (_type_): Retrieved next-tokens.
+            show_context_tokens (int, optional): Number of tokens to show for
+                each retrieved context. Defaults to 30.
+            num_neighbors (int, optional): Number of nearest neighbors to show.
+                Defaults to 3.
+            batch_idx (int, optional): Which sample from the batch to show
+                neighbors for. Defaults to 0.
+            show_inference_context (bool, optional): To show the current
+                inference context or not. Defaults to True.
+        """
         neighbors_to_investigate = knns[batch_idx, :num_neighbors]
         context_tokens = torch.stack(
             [
-                vals[idx - show_context_tokens : idx] if idx >= show_context_tokens else None
+                vals[idx - show_context_tokens : idx]
+                if idx >= show_context_tokens
+                else None
                 for idx in neighbors_to_investigate
             ]
         ).squeeze(-1)
@@ -287,17 +327,19 @@ class KNNWrapper(object):
         context = self._tokenizer.batch_decode(context_tokens)
         vals = self._tokenizer.batch_decode(vals[knns][batch_idx, :num_neighbors])
 
-        if show_test_context:
-            test_context = self._tokenizer.decode(self.input_ids[batch_idx])
-            print(f"==== Test Context: {test_context}")
+        if show_inference_context:
+            inference_context = self._tokenizer.decode(self.input_ids[batch_idx])
+            print(f"==== Test Context: {inference_context}")
 
-        print(f"---- {label} - Contexts and Next Tokens: ")
+        print(f"---- {description} - Contexts and Next Tokens: ")
         for i, (c, v) in enumerate(zip(context, vals)):
             print(f"{i+1}) {c} // {v}")
 
     def register_hook(self, layer, func, pre=False):
         handle = (
-            layer.register_forward_pre_hook(func) if pre else layer.register_forward_hook(func)
+            layer.register_forward_pre_hook(func)
+            if pre
+            else layer.register_forward_hook(func)
         )
         self.hook_handles.append(handle)
 
@@ -313,7 +355,9 @@ class KNNWrapper(object):
 
     @staticmethod
     def interpolate(lm_log_probs, knn_log_probs, lmbda, **kwargs):
-        return torch.logaddexp(lm_log_probs + np.log(1 - lmbda), knn_log_probs + np.log(lmbda))
+        return torch.logaddexp(
+            lm_log_probs + np.log(1 - lmbda), knn_log_probs + np.log(lmbda)
+        )
 
     @staticmethod
     def interpolate_discourage(lm_log_probs, knn_log_probs, lmbda, **kwargs):
@@ -357,7 +401,8 @@ class KNNWrapper(object):
             knn_log_probs_sum = patch_log_probs(knn_log_probs_sum)
 
         return torch.nn.functional.log_softmax(
-            lm_log_probs + torch.tensor(lmbda) * (knn_log_probs_sum - knn_log_probs_subtract),
+            lm_log_probs
+            + torch.tensor(lmbda) * (knn_log_probs_sum - knn_log_probs_subtract),
             dim=-1,
         )
 
@@ -374,24 +419,39 @@ class KNNWrapper(object):
         if model_type.startswith("gpt2"):
             return lambda model: model.transformer.wte
 
+    # YOU CAN ADD MORE MODELS HERE!
     # For every model name and key type, returns a lambda that returns the relevant layer in the model,
     # and whether the input of that layer should be captured (True) or the output (False)
     model_layer_to_capture = {
         "bart": {
-            KEY_TYPE.last_ffn_input: (lambda model: model.base_model.decoder.layers[-1].fc1, True),
-            KEY_TYPE.last_ffn_output: (lambda model: model.base_model.decoder.layers[-1], False),
+            KEY_TYPE.last_ffn_input: (
+                lambda model: model.base_model.decoder.layers[-1].fc1,
+                True,
+            ),
+            KEY_TYPE.last_ffn_output: (
+                lambda model: model.base_model.decoder.layers[-1],
+                False,
+            ),
         },
         "gpt2": {
             KEY_TYPE.last_ffn_input: (lambda model: model.base_model.h[-1].mlp, True),
             KEY_TYPE.last_ffn_output: (lambda model: model.base_model.h[-1], False),
         },
         "marian": {
-            KEY_TYPE.last_ffn_input: (lambda model: model.base_model.decoder.layers[-1].fc1, True),
-            KEY_TYPE.last_ffn_output: (lambda model: model.base_model.decoder.layers[-1], False),
+            KEY_TYPE.last_ffn_input: (
+                lambda model: model.base_model.decoder.layers[-1].fc1,
+                True,
+            ),
+            KEY_TYPE.last_ffn_output: (
+                lambda model: model.base_model.decoder.layers[-1],
+                False,
+            ),
         },
         "t5": {
             KEY_TYPE.last_ffn_input: (
-                lambda model: model.base_model.decoder.block[-1].layer[2].DenseReluDense,
+                lambda model: model.base_model.decoder.block[-1]
+                .layer[2]
+                .DenseReluDense,
                 True,
             ),
             KEY_TYPE.last_ffn_output: (
@@ -400,7 +460,10 @@ class KNNWrapper(object):
             ),
         },
         "gpt_neox": {
-            KEY_TYPE.last_ffn_input: (lambda model: model.gpt_neox.layers[-1].mlp, True),
+            KEY_TYPE.last_ffn_input: (
+                lambda model: model.gpt_neox.layers[-1].mlp,
+                True,
+            ),
             KEY_TYPE.last_ffn_output: (lambda model: model.gpt_neox.layers[-1], False),
         },
         "opt": {
@@ -408,7 +471,10 @@ class KNNWrapper(object):
                 lambda model: model.model.decoder.layers[-1],
                 True,
             ),
-            KEY_TYPE.last_ffn_output: (lambda model: model.model.decoder.layers[-1], False),
+            KEY_TYPE.last_ffn_output: (
+                lambda model: model.model.decoder.layers[-1],
+                False,
+            ),
         },
     }
 
@@ -427,7 +493,9 @@ class KNNSaver(object):
         self.dstore_dir = dstore_dir
         self.dimension = dimension
         self.flat_index = flat_index
-        self.knn_keytype = KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
+        self.knn_keytype = (
+            KEY_TYPE.last_ffn_input if knn_keytype is None else knn_keytype
+        )
         self.continue_writing = continue_writing
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -476,7 +544,9 @@ class KNNSaver(object):
         ).load_keys_and_vals()
 
         # Update values after datastore loading
-        logger.info(f"dstore_size initial/actual: {self.dstore_size}/{self.datastore.dstore_size}")
+        logger.info(
+            f"dstore_size initial/actual: {self.dstore_size}/{self.datastore.dstore_size}"
+        )
         self.dstore_size = self.datastore.dstore_size
         self.dstore_idx = self.datastore.previous_dstore_size or 0
         logger.info(f"dstore_idx current: {self.dstore_idx}")
@@ -484,7 +554,9 @@ class KNNSaver(object):
     def build_index(self):
         self.datastore.build_index()
 
-    def pre_forward_hook(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
+    def pre_forward_hook(
+        self, input_ids=None, attention_mask=None, labels=None, **kwargs
+    ):
         if labels is None:
             raise ValueError(
                 "labels must be provided when saving a datastore. Are you using --predict_with_generate by mistake? If so, disable it"
@@ -513,12 +585,12 @@ class KNNSaver(object):
             keys = keys[:batch_time_size]
             values = values[:batch_time_size]
         try:
-            self.datastore.dstore_keys[self.dstore_idx : (batch_time_size + self.dstore_idx)] = (
-                keys.cpu().numpy().astype(np.float16)
-            )
-            self.datastore.dstore_vals[self.dstore_idx : (batch_time_size + self.dstore_idx)] = (
-                values.unsqueeze(-1).cpu().numpy().astype(np.int32)
-            )
+            self.datastore.dstore_keys[
+                self.dstore_idx : (batch_time_size + self.dstore_idx)
+            ] = (keys.cpu().numpy().astype(np.float16))
+            self.datastore.dstore_vals[
+                self.dstore_idx : (batch_time_size + self.dstore_idx)
+            ] = (values.unsqueeze(-1).cpu().numpy().astype(np.int32))
         except ValueError as ex:
             logger.error(
                 f"Error saving datastore with mode {self.datastore.dstore_keys.mode}, did you try to save an already existing datastore?"
@@ -537,7 +609,9 @@ class KNNSaver(object):
 
     def register_hook(self, layer, func, pre=False):
         handle = (
-            layer.register_forward_pre_hook(func) if pre else layer.register_forward_hook(func)
+            layer.register_forward_pre_hook(func)
+            if pre
+            else layer.register_forward_hook(func)
         )
         self.hook_handles.append(handle)
 

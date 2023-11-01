@@ -30,7 +30,9 @@ class DExpertsWrapper(KNNWrapper):
 
         self.antiexpert = None
         if antiexpert_model:
-            self.antiexpert = GPT2LMHeadModel.from_pretrained(antiexpert_model).to(self.device)
+            self.antiexpert = GPT2LMHeadModel.from_pretrained(antiexpert_model).to(
+                self.device
+            )
             self.antiexpert.eval()
 
         self.expert = None
@@ -39,6 +41,7 @@ class DExpertsWrapper(KNNWrapper):
             self.expert.eval()
 
     def break_into(self, model):
+        """Break into model to enable ensemble of experts."""
         self.model = model
         model.broken_into = True
 
@@ -49,11 +52,16 @@ class DExpertsWrapper(KNNWrapper):
         model.forward = self.pre_forward_hook
 
         # Inject our main function after the model's final layer
+        # Main function = post_forward_hook
+        # It's where the ensemble of LM, expert and anti-expert logits happens.
         final_layer = KNNWrapper.get_model_last_layer(model.config.model_type)(model)
         self.register_hook(final_layer, self.post_forward_hook)
         self.vocab_size = final_layer.out_features
 
-    def pre_forward_hook(self, input_ids=None, attention_mask=None, labels=None, **kwargs):
+    def pre_forward_hook(
+        self, input_ids=None, attention_mask=None, labels=None, **kwargs
+    ):
+        """Access pre-forward pass to generate base LM, expert and anti-expert logits."""
         self.labels = labels
 
         self.expert_logits = None
@@ -73,12 +81,15 @@ class DExpertsWrapper(KNNWrapper):
         )
 
     def post_forward_hook(self, module, input, output):
+        """Ensemble base LM, expert and anti-expert logits after forward pass."""
         batch, time_dim, vocab_size = output.shape
         shift = 0 if self.is_encoder_decoder else 1
         lm_logits = output
         expert_logits, antiexpert_logits = self.expert_logits, self.antiexpert_logits
 
-        lm_logits = torch.nn.functional.log_softmax(lm_logits, dim=-1)  # (batch, time, vocab)
+        lm_logits = torch.nn.functional.log_softmax(
+            lm_logits, dim=-1
+        )  # (batch, time, vocab)
         if self.filter_p:
             for i, logits in enumerate(lm_logits):
                 lm_logits[i] = top_k_top_p_filtering(logits, top_p=self.filter_p)
@@ -95,7 +106,9 @@ class DExpertsWrapper(KNNWrapper):
             nonpad_mask = torch.cat(
                 [
                     self.labels[:, shift:] != -100,
-                    torch.zeros([self.labels.shape[0], shift], dtype=torch.bool).to(self.device),
+                    torch.zeros([self.labels.shape[0], shift], dtype=torch.bool).to(
+                        self.device
+                    ),
                 ],
                 axis=-1,
             )

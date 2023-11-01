@@ -29,7 +29,9 @@ def generate(
         np.array: Prompt continuations
     """
     # Batched tokenization and generation
-    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=False).to(model.device)
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=False).to(
+        model.device
+    )
 
     ## Nucleus sampling. As used in the RTP paper/repo.
     # "Top-p sampling chooses from the smallest possible set of words

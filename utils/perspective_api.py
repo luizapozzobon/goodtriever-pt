@@ -38,7 +38,9 @@ def unpack_scores(response_json: dict) -> Optional[Tuple[dict, dict]]:
         for span_score_dict in scores["spanScores"]:
             assert span_score_dict["score"]["type"] == "PROBABILITY"
             span = (span_score_dict["begin"], span_score_dict["end"])
-            span_scores.setdefault(span, {})[attribute] = span_score_dict["score"]["value"]
+            span_scores.setdefault(span, {})[attribute] = span_score_dict["score"][
+                "value"
+            ]
 
     return summary_scores, span_scores
 

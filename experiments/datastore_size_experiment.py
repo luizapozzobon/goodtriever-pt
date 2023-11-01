@@ -79,7 +79,9 @@ def main(
     if not isinstance(nontoxic_tokens, Iterable) and isinstance(toxic_tokens, Iterable):
         nontoxic_tokens = (nontoxic_tokens,) * len(toxic_tokens)
 
-    assert len(toxic_tokens) == len(nontoxic_tokens), "Must have same number of dstore sizes."
+    assert len(toxic_tokens) == len(
+        nontoxic_tokens
+    ), "Must have same number of dstore sizes."
 
     (base_folder / "logs").mkdir(parents=True, exist_ok=True)
     configure_logger(base_folder / "logs/experiment.log")
@@ -87,7 +89,9 @@ def main(
 
     for dstore_tokens, other_dstore_tokens in zip(toxic_tokens, nontoxic_tokens):
         dstore_dirs = ["--dstore_dir", "--other_dstore_dir"]
-        output_folder = base_folder / f"toxic={dstore_tokens}_nontoxic={other_dstore_tokens}"
+        output_folder = (
+            base_folder / f"toxic={dstore_tokens}_nontoxic={other_dstore_tokens}"
+        )
         (output_folder / "logs").mkdir(parents=True, exist_ok=True)
 
         logger.info(f"{'====' * 5}")
@@ -109,11 +113,15 @@ def main(
                     "Currently, just using both datastores or just the toxic one is supported."
                 )
 
-            dstore = base_folder / "checkpoints" / f"gpt2_{Path(train_file).stem}_{tokens}"
+            dstore = (
+                base_folder / "checkpoints" / f"gpt2_{Path(train_file).stem}_{tokens}"
+            )
             dstore_dirs[i] = f"{dstore_dirs[i]} {dstore}"
 
             if only_generate or dstore.exists():
-                logger.info(f"Skipping datastore build and index train for datastore {i}.")
+                logger.info(
+                    f"Skipping datastore build and index train for datastore {i}."
+                )
                 continue
 
             if tokens:

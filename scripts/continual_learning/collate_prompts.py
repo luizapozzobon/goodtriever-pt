@@ -16,7 +16,9 @@ def make_generations_col(generations, responses):
         yield {"text": generation, **response}
 
 
-def main(original_prompts, scores, output_folder=None, helm=False, treat_as_prompts=True):
+def main(
+    original_prompts, scores, output_folder=None, helm=False, treat_as_prompts=True
+):
     df_original = pd.read_json(original_prompts, lines=True)
     if treat_as_prompts:
         df_prompt = pd.json_normalize(df_original["prompt"])

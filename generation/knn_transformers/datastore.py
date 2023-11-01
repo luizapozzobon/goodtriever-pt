@@ -56,7 +56,9 @@ class Datastore:
         self.continue_writing = continue_writing
 
         self.dstore_size = dstore_size or self.get_dstore_size()
-        self.previous_dstore_size = self.get_dstore_size() if self.continue_writing else None
+        self.previous_dstore_size = (
+            self.get_dstore_size() if self.continue_writing else None
+        )
 
         self.index = None
         self.keys = None
@@ -66,7 +68,9 @@ class Datastore:
             DIST.l2: Datastore.l2,
             DIST.dot: Datastore.dotprod,
         }
-        self.dist_func = dist_type_to_dist_func[knn_sim_func]  # l2 or dot product function
+        self.dist_func = dist_type_to_dist_func[
+            knn_sim_func
+        ]  # l2 or dot product function
 
     def get_knns(self, queries, k=1024, recompute_dists=False):
         if not self.knn_gpu:
@@ -120,7 +124,9 @@ class Datastore:
 
         if not Path(index_name).exists():
             if Path(index_name.replace("_flat", "")).exists():
-                logger.info(f"Fallback index {index_name} to its non-flat version, which exists.")
+                logger.info(
+                    f"Fallback index {index_name} to its non-flat version, which exists."
+                )
                 self.flat_index = False
                 index_name = index_name.replace("_flat", "")
 
@@ -134,7 +140,9 @@ class Datastore:
             if not self.flat_index:
                 # This causes memory errors on large flat indexes
                 co.useFloat16 = True
-            gpu_index = faiss.index_cpu_to_gpu(faiss.StandardGpuResources(), 0, cpu_index, co)
+            gpu_index = faiss.index_cpu_to_gpu(
+                faiss.StandardGpuResources(), 0, cpu_index, co
+            )
             logger.info(f"Moving index to GPU took {time.time() - start} s")
         else:
             gpu_index = cpu_index
@@ -155,7 +163,10 @@ class Datastore:
                 shape=(self.dstore_size, self.dimension),
             )
         self.vals = np.memmap(
-            f"{keys_vals_prefix}_vals.npy", dtype=np.int32, mode="r", shape=(self.dstore_size, 1)
+            f"{keys_vals_prefix}_vals.npy",
+            dtype=np.int32,
+            mode="r",
+            shape=(self.dstore_size, 1),
         )
         # self.vals = torch.from_numpy(self.vals).to(self.device)
 
@@ -214,7 +225,9 @@ class Datastore:
         else:
             # Initialize faiss index
             quantizer = faiss.IndexFlatL2(self.dimension)
-            index = faiss.IndexIVFPQ(quantizer, self.dimension, ncentroids, code_size, 8)
+            index = faiss.IndexIVFPQ(
+                quantizer, self.dimension, ncentroids, code_size, 8
+            )
             index.nprobe = probe
 
             logger.info("Training Index")
@@ -269,7 +282,10 @@ class Datastore:
             Path(keys_filename).parent.mkdir(parents=True, exist_ok=True)
 
         dstore_keys = np.memmap(
-            keys_filename, dtype=np.float16, mode=mode, shape=(self.dstore_size, self.dimension)
+            keys_filename,
+            dtype=np.float16,
+            mode=mode,
+            shape=(self.dstore_size, self.dimension),
         )
         dstore_vals = np.memmap(
             vals_filename, dtype=np.int32, mode=mode, shape=(self.dstore_size, 1)

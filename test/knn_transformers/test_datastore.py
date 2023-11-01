@@ -153,4 +153,6 @@ def test_files_removal():
         dstores = list(dstore_dir.glob("dstore_*"))
         assert len(dstores) == 2, "More than two files starting with `dstore` found."
         indexes = list(dstore_dir.glob("index_*"))
-        assert len(indexes) == 0, "Index file from the previous datastore was not deleted."
+        assert (
+            len(indexes) == 0
+        ), "Index file from the previous datastore was not deleted."

@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 def cleanup(func):
+    """Empty cache from cuda and system."""
+
     def wrapper(*args, **kwargs):
         start_time = time.time()
         func(*args, **kwargs)
@@ -21,10 +23,11 @@ def cleanup(func):
 
 
 def run(cmd):
+    """Run a subprocess and clean things up when it's finished"""
     return cleanup(subprocess.run(cmd, shell=True))
 
 
-def evaluate_on_prompts(
+def evaluate(
     domain,
     output_folder,
     model_name,
@@ -38,6 +41,8 @@ def evaluate_on_prompts(
     batch_size=4,
     flat_index=False,
 ):
+    """Run `run_all` script. Generate completions, score and evaluate."""
+
     generate_cmd = f"""
         python -m scripts.run_all \
             --output_folder {output_folder} \
@@ -59,55 +64,9 @@ def evaluate_on_prompts(
     return run(generate_cmd)
 
 
-def evaluate(
-    domain,
-    output_folder,
-    model_name,
-    prompts_path,
-    rtp_prompts_path,
-    toxic_model,
-    nontoxic_model,
-    rate_limit,
-    group_toxicity_by=None,
-    num_prompts=None,
-    kind="knn",
-    batch_size=4,
-    flat_index=False,
-):
-    evaluate_on_prompts(
-        domain=domain,
-        output_folder=output_folder,
-        model_name=model_name,
-        prompts_path=prompts_path,
-        toxic_model=toxic_model,
-        nontoxic_model=nontoxic_model,
-        rate_limit=rate_limit,
-        group_toxicity_by=group_toxicity_by,
-        num_prompts=num_prompts,
-        kind=kind,
-        batch_size=batch_size,
-        flat_index=flat_index,
-    )
-
-    # RTP 1k evaluation
-    if rtp_prompts_path is not None:
-        evaluate_on_prompts(
-            domain="rtp",
-            output_folder=output_folder / "RTP",
-            model_name=model_name,
-            prompts_path=rtp_prompts_path,
-            toxic_model=toxic_model,
-            nontoxic_model=nontoxic_model,
-            rate_limit=rate_limit,
-            group_toxicity_by=None,
-            num_prompts=num_prompts or 1000,
-            kind=kind,
-            batch_size=batch_size,
-            flat_index=flat_index,
-        )
-
-
 def extract_domains_from_file_list(file_list):
+    """Extract domains from files found within a filename pattern."""
+
     def _extract_domain(text):
         pattern = r"identity_(.*?)_(toxic|nontoxic)\.json"
         matches = re.findall(pattern, text)

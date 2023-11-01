@@ -65,7 +65,9 @@ def main(
     elif isinstance(df.iloc[0][column_name], str):
         df[column_name] = df[column_name].apply(lambda x: [x])
     else:
-        raise NotImplementedError("If dict or list of dicts, make sure there's a `text` key.")
+        raise NotImplementedError(
+            "If dict or list of dicts, make sure there's a `text` key."
+        )
 
     num_samples = len(df.iloc[0][column_name])
     perspective = PerspectiveWorker(
