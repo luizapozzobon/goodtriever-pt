@@ -3,8 +3,9 @@ import logging
 import re
 import subprocess
 import time
-
 import torch
+
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -76,3 +77,27 @@ def extract_domains_from_file_list(file_list):
                 return match[0]
 
     return sorted(set([_extract_domain(str(filename)) for filename in file_list]))
+
+
+def setup_output_folder(
+    output_folder, toxicity_choices, experiment_name, model_name, kind
+):
+    if not all(choice in ["toxic", "nontoxic"] for choice in toxicity_choices):
+        raise ValueError(
+            "`toxicity_choices` should contain only 'toxic' or 'nontoxic'."
+        )
+
+    # Toxicity and dstores setup
+    toxic_added = True if "toxic" in toxicity_choices else False
+    nontoxic_added = True if "nontoxic" in toxicity_choices else False
+
+    # Folder setup
+    output_folder = (
+        Path(output_folder)
+        / experiment_name
+        / model_name
+        / kind
+        / f"toxic={toxic_added}_nontoxic={nontoxic_added}"
+    )
+
+    return output_folder
