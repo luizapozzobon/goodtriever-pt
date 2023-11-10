@@ -27,10 +27,5 @@ datasets
 scipy
 faiss-gpu==1.7.2
 
-# Continual Learning
 pandarallel
 spacy
-sentence_transformers
-hdbscan
-umap-learn
-altair
