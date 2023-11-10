@@ -11,7 +11,7 @@ pandas
 matplotlib
 seaborn
 tensorboard
-transformers[torch]
+transformers[torch]>=4.35.0
 fsspec
 gcsfs
 psutil
@@ -22,10 +22,13 @@ wordcloud
 
 # kNN-LM
 torch>=1.9.0
-transformers
 datasets
 scipy
 faiss-gpu==1.7.2
-
 pandarallel
 spacy
+
+# Quantization
+accelerate
+bitsandbytes
+deepspeed
