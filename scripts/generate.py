@@ -15,19 +15,10 @@ from generation.base import batched_generation
 from generation.models import setup_model, setup_tokenizer
 from utils.utils import load_cache, structure_output_filepath
 
-ALLOWED_MODELS = ["gpt2", "gpt2-medium", "gpt2-large"]
-
 
 def build_filename(gen_args, knn_args) -> str:
     """Build filename from user arguments."""
-    name = f'{"eos" if gen_args.use_eos else "prompted"}_{gen_args.model_name}'
-    if gen_args.use_eos:
-        name = "eos"
-    else:
-        name = "prompted"
-
-    name += f"_{gen_args.model_name}"
-
+    name = f'{"eos" if gen_args.use_eos else "prompted"}_{gen_args.model_name.replace("/", "_")}'
     if knn_args.knn:
         name += "_knn"
         name += f"_{str(knn_args.lmbda).replace('.','')}"
@@ -57,19 +48,25 @@ def main(parser: Optional = None) -> Iterable:
 
     gen_args, knn_args = parser.gen_args, parser.knn_args
 
-    if gen_args.use_eos:
-        if gen_args.model_name in ALLOWED_MODELS:
-            df = np.repeat(
-                pd.Series("<|endoftext|>", name="text"), gen_args.eos_samples
-            )
-            df = df.to_frame().reset_index(drop=True)
-        else:
-            raise NotImplementedError(
-                f"{gen_args.model_name} is not implemented. "
-                f"Choose one from {', '.join(ALLOWED_MODELS)}"
-            )
-        gen_args.num_return_sequences = 1
+    tokenizer = setup_tokenizer(gen_args.model_name)
+    model = setup_model(
+        gen_args.model_name, knn_args, hf_model_args=gen_args.hf_model_args
+    )
 
+    if gen_args.use_eos:
+        condition = tokenizer.eos_token
+
+        if gen_args.eos_language is not None:
+            if gen_args.eos_language == "pt":
+                condition = f"Texto em português. {condition}"
+            elif gen_args.eos_language == "en":
+                condition = f"Text in english. {condition}"
+            else:
+                raise NotImplementedError()
+
+        df = np.repeat(pd.Series(condition, name="text"), gen_args.eos_samples)
+        df = df.to_frame().reset_index(drop=True)
+        gen_args.num_return_sequences = 1
     else:
         df = pd.read_json(gen_args.prompts_path, lines=True)
         if "prompt" in df.columns:
@@ -104,9 +101,6 @@ def main(parser: Optional = None) -> Iterable:
 
     if df.empty:
         return
-
-    tokenizer = setup_tokenizer(gen_args.model_name)
-    model = setup_model(gen_args.model_name, knn_args)
 
     yield from batched_generation(
         output_file,
