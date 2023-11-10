@@ -12,8 +12,17 @@ def setup_tokenizer(model_name: str):
     return tokenizer
 
 
-def setup_model(model_name: str, knn_args):
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+def process_dict_arg(args):
+    if args is None:
+        return {}
+    # TODO treat literal arguments
+    return {k: v for k, v in (i.split(":") for i in args.split(","))}
+
+
+def setup_model(model_name: str, knn_args, hf_model_args=None):
+    hf_model_args = process_dict_arg(hf_model_args)
+
+    model = AutoModelForCausalLM.from_pretrained(model_name, **hf_model_args)
     dimension = model.config.hidden_size
 
     wrapper = None

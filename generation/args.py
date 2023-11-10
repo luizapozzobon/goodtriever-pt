@@ -63,13 +63,20 @@ class GenerationArguments:
     use_eos: bool = field(
         default=False,
         metadata={
-            "help": "Whether to do an unprompted generation of not. "
+            "help": "Whether to do an unprompted generation or not. "
             "If True, ignores `filename` prompts and generates `eos_samples` sequences from "
             "an end of sequence token. Defaults to False."
         },
     )
     eos_samples: int = field(
         default=10_000, metadata={"help": "Number of eos generations. Defaults to 10k"}
+    )
+    eos_language: str = field(
+        default=None,
+        metadata={
+            "help": "This will be used to prompt a model as "
+            "in '`lang=`eos_language`'. Defaults to None"
+        },
     )
     output_filename: str = field(
         default=None,
@@ -81,6 +88,12 @@ class GenerationArguments:
     num_prompts: int = field(
         default=None,
         metadata={"help": "Number of prompts to use. If None, will use all."},
+    )
+    hf_model_args: str = field(
+        default=None,
+        metadata={
+            "help": "Extra HuggingFace model parameters. Should be passed as comma-separated field:position pairs, e.g. device_map:auto,load_in_4bit:True"
+        },
     )
 
 
