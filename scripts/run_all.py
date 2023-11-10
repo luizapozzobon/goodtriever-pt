@@ -3,7 +3,7 @@ import logging
 import time
 import warnings
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import fire
 import numpy as np
@@ -22,6 +22,7 @@ def main(
     perplexity_model: str = "gpt2-xl",
     collate_chunksize: int = int(1e5),
     sample_perplexity: int = 1000,
+    custom_attrs: Optional[List[str]] = None,
     group_toxicity_by: Optional[str] = None,
 ) -> None:
     """Run full pipeline: generate, score, collate and evaluate.
@@ -41,6 +42,8 @@ def main(
         sample_perplexity (int, optional): Used in the evaluate script.
             Number of prompts to compute perplexity for.
             Defaults to 1000.
+        custom_attrs (list, optional): Custom attributes to request PAPI.
+            If None, all will be requested. Defaults to None.
         group_toxicity_by (str, optional): Column to group toxicity results by
             (i.e. a column containing different classes of interest). Only
             possible for prompted generation. Classes should be present in the
@@ -94,6 +97,7 @@ def main(
         input_filename=generations_path,
         output_folder=output_folder,
         perspective_rate_limit=perspective_rate_limit,
+        custom_attrs=custom_attrs,
     )
     logger.info(f"Scoring took {time.time() - start:.2f} seconds.")
 
