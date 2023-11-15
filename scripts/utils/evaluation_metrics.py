@@ -1,11 +1,11 @@
-import torch
-import numpy as np
-import pandas as pd
-
-from tqdm.auto import tqdm
 from pathlib import Path
 from typing import Callable, List, Optional
-from transformers import GPT2LMHeadModel, GPT2TokenizerFast
+
+import numpy as np
+import pandas as pd
+import torch
+from tqdm.auto import tqdm
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def compute_distinctness(
@@ -238,7 +238,14 @@ def get_perplexity(
 
     """
     encodings = tokenizer("\n\n".join(texts), return_tensors="pt")
-    max_length = model.config.n_positions
+    if "LlamaForCausalLM" in model.config.architectures:
+        max_length = model.config.max_position_embeddings
+    elif "GPT2LMHeadModel" in model.config.architectures:
+        max_length = model.config.n_positions
+    else:
+        raise ValueError(
+            f"Model {model.config._name_or_path} not supported for perplexity."
+        )
     seq_len = encodings.input_ids.size(1)
 
     nlls = []
@@ -314,8 +321,8 @@ def compute_ppl(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = GPT2LMHeadModel.from_pretrained(model_name).to(device)
-    tokenizer = GPT2TokenizerFast.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     prompt_conditions = {
         "toxic": f"toxicity > {threshold}",
