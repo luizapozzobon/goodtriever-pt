@@ -22,9 +22,11 @@ def make_generations_col(generations: List[str], responses: List[Dict]) -> Dict:
     """Join generation text to its results from PerpectiveAPI scores into a dict."""
     for generation, response in zip(generations, responses):
         if isinstance(response, dict):
-            response = unpack_scores(response)[0]
+            if "toxicity" not in response:
+                response = unpack_scores(response)[0]
         else:
             response = {x: None for x in PERSPECTIVE_API_ATTRIBUTES_LOWER}
+
         yield {"text": generation, **response}
 
 
@@ -145,7 +147,7 @@ def main(
 
         if "response" in chunk:
             scores_list = chunk["response"].tolist()
-        elif "attributeScores" in chunk:
+        else:
             scores_list = chunk.to_dict(orient="records")
 
         scored_gens = collate(gen_list[start:end], scores_list, prompts, indexes)

@@ -96,10 +96,10 @@ class ChatGPTToxicityScorer:
         response_dict = {
             "id": response.id,
             "response_id": response_id,
-            "response": response.choices[0].message.content,
             "model": response.model,
             "object": response.object,
-            "text": clean_answer if toxicity is not None else None,
+            "raw_response": response.choices[0].message.content,
+            "clean_response": clean_answer if toxicity is not None else None,
             "toxicity": toxicity,
         }
 

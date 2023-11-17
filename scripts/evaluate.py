@@ -1,17 +1,17 @@
 import warnings
-import fire
-import pandas as pd
-
 from pathlib import Path
 from typing import Optional
 
-from utils.utils import structure_output_filepath
-from scripts.evaluation_metrics import (
+import fire
+import pandas as pd
+
+from scripts.utils.evaluation_metrics import (
     compute_distinctness,
-    compute_toxicity_unprompted,
-    compute_toxicity_prompted,
     compute_ppl,
+    compute_toxicity_prompted,
+    compute_toxicity_unprompted,
 )
+from utils.utils import structure_output_filepath
 
 
 def main(
