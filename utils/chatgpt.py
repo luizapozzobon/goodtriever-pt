@@ -53,7 +53,7 @@ class ChatGPTToxicityScorer:
         self.current_request_id = 0
 
     @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(5))
-    def request(self, message, system_message, seed, top_p):
+    def _request(self, message, system_message, seed, top_p):
         chat_params = {
             "seed": seed,
             "top_p": top_p,
@@ -72,11 +72,10 @@ class ChatGPTToxicityScorer:
             response = e
         return response
 
-    def process(self, response_id: int, response: Any) -> Dict:
+    def _process(self, response: Any) -> Dict:
         if isinstance(response, str) is None:
             return {
                 "id": None,
-                "response_id": response_id,
                 "response": response,
                 "model": None,
                 "object": None,
@@ -95,7 +94,6 @@ class ChatGPTToxicityScorer:
 
         response_dict = {
             "id": response.id,
-            "response_id": response_id,
             "model": response.model,
             "object": response.object,
             "raw_response": response.choices[0].message.content,
@@ -106,14 +104,13 @@ class ChatGPTToxicityScorer:
         return response_dict
 
     def run_request(self, text: List[str]) -> Dict:
-        response = self.request(
+        response = self._request(
             self.user.format(text=text),
             self.system,
             self.seed,
             self.top_p,
         )
-        self.current_request_id += 1
-        return self.process(self.current_request_id, response)
+        return self._process(response)
 
     def run_parallel_requests(
         self,
@@ -127,17 +124,16 @@ class ChatGPTToxicityScorer:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for batch in batchify(texts, batch_size=max_workers):
                 with self.output_file.open("a") as file:
-                    responses = {}
                     for response_dict in executor.map(self.run_request, batch):
-                        responses[response_dict["response_id"]] = response_dict
+                        response_dict["response_id"] = self.current_request_id
 
+                        json.dump(response_dict, file)
+                        file.write("\n")
                         if response_dict["toxicity"] == None:
                             failures += 1
 
+                        self.current_request_id += 1
+                        yield response_dict
+
                     pbar.update(len(batch))
                     pbar.set_postfix(failures=failures, rate_limt=max_workers)
-
-                    for _, response_dict in sorted(responses.items()):
-                        json.dump(response_dict, file)
-                        file.write("\n")
-                        yield response_dict
