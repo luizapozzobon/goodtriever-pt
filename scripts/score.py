@@ -3,6 +3,7 @@
 Heavily inspired by:
 https://github.com/allenai/real-toxicity-prompts/blob/master/scripts/run_prompts_experiment.py
 """
+import logging
 from pathlib import Path
 from typing import List, Optional
 
@@ -10,22 +11,20 @@ import fire
 import numpy as np
 import pandas as pd
 
+from utils.chatgpt import ChatGPTToxicityScorer
 from utils.constants import PERSPECTIVE_API_KEY
 from utils.perspective_api import PerspectiveWorker
 from utils.utils import load_cache, structure_output_filepath
-
-if PERSPECTIVE_API_KEY is None:
-    raise ValueError(
-        "Please run `export PERSPECTIVE_API_KEY=´key´ if you wish to use PerspectiveAPI."
-    )
 
 
 def main(
     input_filename: str,
     column_name: str = "generations",
     output_folder: Optional[str] = None,
-    perspective_rate_limit: int = 1,
+    rate_limit: int = 1,
     custom_attrs: Optional[List[str]] = None,
+    api: str = "perspective",
+    language: str = "pt",
 ) -> None:
     """Score sequences of text with PerspectiveAPI.
 
@@ -38,21 +37,33 @@ def main(
             Defaults to "generations".
         output_folder (str, optional): Output folder. If None, results will be saved
             to the same folder as `input_filename`. Defaults to None.
-        perspective_rate_limit (int, optional): Maximum number of API calls per second.
+        rate_limit (int, optional): Maximum number of API calls per second.
             Defaults to 1.
         custom_attrs (list, optional): Custom attributes to request PAPI.
             If None, all will be requested. Defaults to None.
+        api (str, optional): Which API to use between 'perspective' and 'chatgpt'.
+            Defaults to "perspective".
 
     Raises:
         NotImplementedError: If `column_name` values are not lists or dicts or don't
             have a 'text' key.
     """
+
+    if api not in ["perspective", "chatgpt"]:
+        raise ValueError(f"API {api} not supported. Options: 'perspective', 'chatgpt'.")
+
+    if api == "perspective":
+        if PERSPECTIVE_API_KEY is None:
+            raise ValueError(
+                "Please run `export PERSPECTIVE_API_KEY='key'` if you wish to use PerspectiveAPI."
+            )
+
     input_filename = Path(input_filename)
     if not input_filename.exists():
         raise ValueError(f"{input_filename} not found.")
 
     output_file = structure_output_filepath(
-        step="perspective",
+        step=api,
         output_folder=output_folder or input_filename.parent,
         previous_filename=input_filename,
     )
@@ -73,12 +84,17 @@ def main(
         )
 
     num_samples = len(df.iloc[0][column_name])
-    perspective = PerspectiveWorker(
-        out_file=output_file,
-        total=df.shape[0] * num_samples,
-        rate_limit=perspective_rate_limit,
-        custom_attrs=custom_attrs,
-    )
+
+    if api == "perspective":
+        worker = PerspectiveWorker(
+            out_file=output_file,
+            total=df.shape[0] * num_samples,
+            rate_limit=rate_limit,
+            custom_attrs=custom_attrs,
+        )
+    else:
+        logging.info(f"Starting ChatGPT toxicity scorer for language {language}.")
+        worker = ChatGPTToxicityScorer(output_file=output_file, language=language)
 
     # Flatten and make list
     values = np.stack(df[column_name].values).reshape(-1).tolist()
@@ -89,13 +105,20 @@ def main(
 
     if len(values) == 0:
         print("No more samples to score.")
-        perspective.stop()
+        if api == "perspective":
+            worker.stop()
         return output_file
 
-    for i, text in enumerate(values):
-        perspective(f"generation-{num_cached_scores + i}", text)
-
-    perspective.stop()
+    if api == "perspective":
+        for i, text in enumerate(values):
+            worker(f"generation-{num_cached_scores + i}", text)
+        worker.stop()
+    else:
+        worker.current_request_id = num_cached_scores
+        for response_dict in worker.run_parallel_requests(
+            texts=values, num_workers=rate_limit
+        ):
+            pass
 
     return output_file
 

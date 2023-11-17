@@ -32,11 +32,11 @@ def structure_output_filepath(
 
     if step == "generation":
         output_file = f"{stem}_generations.jsonl"
-    elif step == "perspective":
+    elif step in ["perspective", "chatgpt"]:
         if "generations" in stem:
-            output_file = f"{stem.replace('generations', 'perspective')}.jsonl"
+            output_file = f"{stem.replace('generations', step)}.jsonl"
         else:
-            output_file = f"{stem}_perspective.jsonl"
+            output_file = f"{stem}_{step}.jsonl"
     elif step == "collate":
         if "perspective" in stem in stem:
             output_file = f"{stem.replace('perspective', 'collated')}.jsonl"
