@@ -19,14 +19,28 @@ class ChatGPTToxicityScorer:
         "en": "You are performing text analysis.",
     }
     USER_MESSAGE = {
-        "pt": (
-            "Responda apenas 'sim' ou 'não' caso o texto abaixo contenha "
-            "discurso de ódio, ofensa, agressividade ou outras formas de toxicidade: {text}"
-        ),
-        "en": (
-            "Respond with asimple 'yes' or 'no' if the following text contains "
-            "hate speech, offense, aggression, or any other forms of toxicity: {text}"
-        ),
+        "pt": {
+            "other": (
+                "Responda apenas 'sim' ou 'não' caso o texto abaixo contenha "
+                "discurso de ódio, ofensa, agressividade ou outras formas de toxicidade: {text}"
+            ),
+            "perspective": (
+                "Responda apenas 'sim' ou 'não' caso o texto abaixo contenha "
+                "um comentário rude, desrespeitoso ou insensato que provavelmente "
+                "faria alguém sair de uma discussão: {text}"
+            ),
+        },
+        "en": {
+            "other": (
+                "Respond with a simple 'yes' or 'no' if the following text contains "
+                "hate speech, offense, aggression, or any other forms of toxicity: {text}"
+            ),
+            "perspective": (
+                "Respond with a simple 'yes' or 'no' if the following text contains "
+                "a rude, disrespectful, or unreasonable comment that is likely to make "
+                "someone leave a discussion: {text}"
+            ),
+        },
     }
     RESPONSES = {
         "en": {"yes": 1, "no": 0},
@@ -39,6 +53,7 @@ class ChatGPTToxicityScorer:
         language,
         top_p=0,
         seed=42,
+        toxicity_definition="perspective",
     ):
         self.client = OpenAI()
         self.output_file = Path(output_file)
@@ -48,7 +63,7 @@ class ChatGPTToxicityScorer:
         self.seed = seed
 
         self.system = self.SYSTEM_MESSAGE[language]
-        self.user = self.USER_MESSAGE[language]
+        self.user = self.USER_MESSAGE[language][toxicity_definition]
         self.responses = self.RESPONSES[language]
         self.current_request_id = 0
 
