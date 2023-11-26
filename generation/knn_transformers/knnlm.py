@@ -476,6 +476,16 @@ class KNNWrapper(object):
                 False,
             ),
         },
+        "llama": {
+            KEY_TYPE.last_ffn_input: (
+                lambda model: model.model.layers[-1].mlp,
+                True,
+            ),
+            KEY_TYPE.last_ffn_output: (
+                lambda model: model.model.layers[-1],
+                False,
+            ),
+        },
     }
 
 
