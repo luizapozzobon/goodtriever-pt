@@ -111,6 +111,9 @@ def main(parser: Optional = None) -> Iterable:
         num_return_sequences=gen_args.num_return_sequences,
         max_new_tokens=gen_args.max_new_tokens,
         top_p=gen_args.top_p,
+        top_k=gen_args.top_k,
+        temperature=gen_args.temperature,
+        repetition_penalty=gen_args.repetition_penalty,
     )
 
 

@@ -96,7 +96,7 @@ def main(
     scores_path = score(
         input_filename=generations_path,
         output_folder=output_folder,
-        perspective_rate_limit=perspective_rate_limit,
+        rate_limit=perspective_rate_limit,
         custom_attrs=custom_attrs,
     )
     logger.info(f"Scoring took {time.time() - start:.2f} seconds.")

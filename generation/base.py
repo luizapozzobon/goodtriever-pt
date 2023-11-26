@@ -14,6 +14,9 @@ def generate(
     max_new_tokens: int,
     num_return_sequences: int,
     top_p: float,
+    top_k: int,
+    temperature: float,
+    repetition_penalty: float,
 ) -> np.array:
     """Generate sequences given a prompt.
 
@@ -24,6 +27,9 @@ def generate(
         max_new_tokens (int): Number of tokens to generate.
         num_return_sequences (int): Number of sequences to generate for each prompt.
         top_p (float): top_p probability for nucleus sampling.
+        top_k (int): top_k for top-k sampling.
+        temperature (float): temperature for generation.
+        repetition_penalty (float): repetition penalty for generation.
 
     Returns:
         np.array: Prompt continuations
@@ -42,7 +48,9 @@ def generate(
         num_return_sequences=num_return_sequences,
         max_new_tokens=max_new_tokens,
         top_p=top_p,
-        top_k=0,
+        top_k=top_k,
+        temperature=temperature,
+        repetition_penalty=repetition_penalty,
     )
     continuations = tokenizer.batch_decode(
         outputs[:, inputs["input_ids"].shape[-1] :],
@@ -64,6 +72,9 @@ def batched_generation(
     num_return_sequences: int,
     max_new_tokens: int,
     top_p: float,
+    top_k: int,
+    temperature: float,
+    repetition_penalty: float,
 ) -> Generator:
     """https://github.com/allenai/real-toxicity-prompts/blob/master/generation/generation.py#L61"""
 
@@ -79,6 +90,9 @@ def batched_generation(
             num_return_sequences=num_return_sequences,
             max_new_tokens=max_new_tokens,
             top_p=top_p,
+            top_k=top_k,
+            temperature=temperature,
+            repetition_penalty=repetition_penalty,
         )
         data = [{"prompt": p, "generations": c} for p, c in zip(chunk, continuations)]
         for d in data:

@@ -50,11 +50,23 @@ class GenerationArguments:
     max_new_tokens: int = field(
         default=20, metadata={"help": "Number of tokens to generate. Defaults to 20."}
     )
+    top_k: int = field(
+        default=0,
+        metadata={"help": "Top-k. Defaults to 0."},
+    )
     top_p: float = field(
         default=0.90,
         metadata={
             "help": "Top-p for nucleus sampling (after ensemble). Defaults to 0.90."
         },
+    )
+    temperature: float = field(
+        default=1.0,
+        metadata={"help": "Temperature for generation. Defaults to 1.0."},
+    )
+    repetition_penalty: float = field(
+        default=1.0,
+        metadata={"help": "Repetition penalty for generation. Defaults to 1.0."},
     )
     batch_size: int = field(
         default=16,
