@@ -104,8 +104,7 @@ def main(
                     step="diversity",
                     previous_filename=path,
                 )
-                if prompted:
-                    compute_distinctness(df, output_file)
+                compute_distinctness(df, output_file)
 
 
 if __name__ == "__main__":

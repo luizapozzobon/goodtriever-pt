@@ -29,7 +29,10 @@ def compute_distinctness(
         total=len(generations_df.index),
         desc="Evaluating diversity",
     ):
-        generations = [g["text"] for g in row["generations"]]
+        if "generations" in row:
+            generations = [g["text"] for g in row["generations"]]
+        else:
+            generations = [row["text"]]
         unigrams, bigrams, trigrams = set(), set(), set()
         total_words = 0
         for gen in generations:
@@ -321,7 +324,10 @@ def compute_ppl(
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = AutoModelForCausalLM.from_pretrained(model_name).to(device)
+    load_in_4bit = True if "13B" in model_name else False
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name, device_map="auto", load_in_4bit=load_in_4bit
+    )
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     prompt_conditions = {
