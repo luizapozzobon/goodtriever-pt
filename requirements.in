@@ -32,3 +32,6 @@ spacy
 accelerate
 bitsandbytes
 deepspeed
+
+openai
+tenacity
